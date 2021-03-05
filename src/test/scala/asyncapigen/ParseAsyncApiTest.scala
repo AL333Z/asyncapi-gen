@@ -47,7 +47,12 @@ class ParseAsyncApiTest extends CatsEffectSuite {
           messages = Map(
             "UserSignedUp" -> Left(
               Message(
-                payload = Left(ObjectSchema(List(), Map("displayName" -> StringSchema, "email" -> StringSchema))),
+                payload = Left(
+                  ObjectSchema(
+                    required = List(),
+                    properties = Map("displayName" -> StringSchema, "email" -> StringSchema)
+                  )
+                ),
                 tags = List(),
                 description = None
               )

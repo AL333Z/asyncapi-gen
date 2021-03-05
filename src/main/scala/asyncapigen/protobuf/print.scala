@@ -7,7 +7,7 @@ import asyncapigen.protobuf.schema.Protobuf._
 object print {
   private def printOption(o: OptionValue): String = s"${o.name} = ${o.value}"
 
-  def printSchema: Printer[Protobuf] = {
+  implicit val protobufPrinter: Printer[Protobuf] = {
 
     def enumToString(e: TEnum): String = {
       val printOptions = e.options.map(o => s"\toption ${o.name} = ${o.value};").mkString("\n")
