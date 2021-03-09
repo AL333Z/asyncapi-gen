@@ -76,13 +76,6 @@ object schema {
 
   final case class ExternalDocs(url: String, description: Option[String])
 
-  type Callback = Map[String, Channel.ItemObject]
-
-  object Callback {
-    def apply(values: (String, Channel.ItemObject)*): Callback =
-      values.toMap
-  }
-
   final case class Header(description: String, schema: Schema)
 
   final case class Parameter(description: Option[String], schema: Schema, location: String)

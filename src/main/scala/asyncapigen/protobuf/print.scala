@@ -1,99 +1,116 @@
 package asyncapigen.protobuf
 
 import asyncapigen.Printer
+import asyncapigen.Printer.syntax._
+import asyncapigen.protobuf.schema.FieldDescriptorProtoLabel.{Optional, _}
+import asyncapigen.protobuf.schema.FieldDescriptorProtoType._
 import asyncapigen.protobuf.schema._
-import asyncapigen.protobuf.schema.Protobuf._
 
 object print {
-  private def printOption(o: OptionValue): String = s"${o.name} = ${o.value}"
+  implicit val printOptionValue: Printer[OptionValue] = Printer.print[OptionValue] { ov =>
+    s"${ov.name} = ${ov.value}"
+  }
 
-  implicit val protobufPrinter: Printer[Protobuf] = {
+  implicit val printFieldDescriptorProtoType: Printer[FieldDescriptorProtoType] = {
+    Printer[FieldDescriptorProtoType] {
+      case NullProto            => "null"
+      case DoubleProto          => "double"
+      case FloatProto           => "float"
+      case Int32Proto           => "int32"
+      case Int64Proto           => "int64"
+      case Uint32Proto          => "uint32"
+      case Uint64Proto          => "uint64"
+      case Sint32Proto          => "sint32"
+      case Sint64Proto          => "sint64"
+      case Fixed32Proto         => "fixed32"
+      case Fixed64Proto         => "fixed64"
+      case Sfixed32Proto        => "sfixed32"
+      case Sfixed64Proto        => "sfixed64"
+      case BoolProto            => "bool"
+      case StringProto          => "string"
+      case BytesProto           => "bytes"
+      case NamedTypeProto(name) => name
+    }
+  }
 
-    def enumToString(e: TEnum): String = {
-      val printOptions = e.options.map(o => s"\toption ${o.name} = ${o.value};").mkString("\n")
-      val printSymbols = e.symbols.map({ case (s, i) => s"\t$s = $i;" }).mkString("\n")
-      val printAliases = e.aliases.map({ case (s, i) => s"\t$s = $i;" }).mkString("\n")
+  implicit val printFieldDescriptorProtoLabel: Printer[FieldDescriptorProtoLabel] =
+    Printer.print[FieldDescriptorProtoLabel] {
+      case Optional => "optional"
+      case Required => ""
+      case Repeated => "repeated"
+    }
 
+  implicit val printEnumDescriptorProto: Printer[EnumDescriptorProto] =
+    Printer.print[EnumDescriptorProto] { edp =>
+      val printOptions = edp.options.map(o => s"\toption ${o.name} = ${o.value};").mkString("\n")
+      val printSymbols = edp.symbols.map { case (s, i) => s"\t$s = $i;" }.toList.mkString("\n")
       s"""
-         |enum ${e.name} {
-         |$printOptions
-         |$printSymbols
-         |$printAliases
-         |}
+        |enum ${edp.name} {
+        |$printOptions
+        |$printSymbols
+        |}
       """.stripMargin
     }
 
-    def messageToString(m: TMessage): String = {
-      val printReserved: String = m.reserved
-        .map(l => s"reserved " + l.mkString(start = "", sep = ", ", end = ";"))
-        .mkString("\n  ")
+  implicit val printOneofDescriptorProto: Printer[OneofDescriptorProto] =
+    Printer.print[OneofDescriptorProto] { oodp =>
+      val printFields =
+        oodp.fields
+          .map(f => s"${f.`type`.print} ${f.name} = ${f.index};")
+          .toList
+          .mkString("\n")
 
-      def printOptions(options: List[OptionValue]): String =
+      s"""
+        |oneof ${oodp.name} {
+        |  $printFields
+        |}
+      """.stripMargin
+    }
+
+  implicit val printMessageDescriptorProto: Printer[MessageDescriptorProto] =
+    Printer.print[MessageDescriptorProto] { mdp =>
+      def printOptions(options: List[OptionValue]) =
         if (options.isEmpty)
           ""
         else
-          options.map(printOption).mkString(start = " [", sep = ", ", end = "]")
+          options.map(_.print).mkString(start = " [", sep = ", ", end = "]")
 
       val printFields =
-        m.fields
-          .map {
-            case f: FieldType.Field =>
-              s"${f.tpe} ${f.name} = ${f.position}${printOptions(f.options)};"
-            case oneOf: FieldType.OneOfField =>
-              s"${oneOf.tpe}"
+        mdp.fields
+          .map { field =>
+            s"${field.label.print} ${field.`type`.print} ${field.name} = ${field.index}${printOptions(field.options)};"
+              .stripLeading()
           }
-          .mkString("\n  ")
-
-      val printNestedMessages = m.nestedMessages.mkString("\n")
-
-      val printNestedEnums = m.nestedEnums.mkString("\n")
+          .mkString("\n")
+      val printNestedMessages: String = mdp.nestedMessages.map(_.print).mkString("\n")
+      val printNestedEnums            = mdp.nestedEnums.map(_.print).mkString("\n")
+      val printOneOfs                 = mdp.oneOfs.map(_.print)
 
       s"""
-         |message ${m.name} {
-         |  $printReserved
+         |message ${mdp.name} {
          |  $printFields
+         |  
          |  $printNestedMessages
+         |  
          |  $printNestedEnums
+         |  
+         |  $printOneOfs
          |}
       """.stripMargin
     }
 
-    Printer.print[Protobuf] {
-      case TNull                                   => "null"
-      case TDouble                                 => "double"
-      case TFloat                                  => "float"
-      case TInt32                                  => "int32"
-      case TInt64                                  => "int64"
-      case TUint32                                 => "uint32"
-      case TUint64                                 => "uint64"
-      case TSint32                                 => "sint32"
-      case TSint64                                 => "sint64"
-      case TFixed32                                => "fixed32"
-      case TFixed64                                => "fixed64"
-      case TSfixed32                               => "sfixed32"
-      case TSfixed64                               => "sfixed64"
-      case TBool                                   => "bool"
-      case TString                                 => "string"
-      case TBytes                                  => "bytes"
-      case TNamedType(_, name)                     => name
-      case TOptionalNamedType(_, name)             => s"optional $name"
-      case TRepeated(value)                        => s"repeated $value"
-      case TMap(key, value)                        => s"map<$key, $value>"
-      case TFileDescriptor(values, _, packageName) => s"package $packageName; \n ${values.mkString("\n")}"
-      case e: TEnum                                => enumToString(e)
-      case m: TMessage                             => messageToString(m)
-      case TOneOf(name, fields) =>
-        val printFields =
-          fields
-            .map(f => s"${f.tpe} ${f.name} = ${f.position};")
-            .toList
-            .mkString("\n  ")
-
-        s"""
-           |oneof $name {
-           |  $printFields
-           |}
-        """.stripMargin
+  implicit val printFileDescriptorProto: Printer[FileDescriptorProto] =
+    Printer.print[FileDescriptorProto] { case FileDescriptorProto(_, pckage, messages, enums, syntax) =>
+      s"""
+           |syntax = "$syntax";
+           |
+           |package $pckage;
+           |
+           |${messages.map(_.print).mkString("\n")}
+           |
+           |${enums.map(_.print).mkString("\n")}
+           |
+           |""".stripMargin
     }
-  }
+
 }
