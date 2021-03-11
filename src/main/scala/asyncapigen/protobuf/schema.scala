@@ -1,5 +1,6 @@
 package asyncapigen.protobuf
 
+import asyncapigen.protobuf.schema.FieldProtoType.{NamedTypeProto, ScalarValueProtoType}
 import cats.data.NonEmptyList
 
 /**
@@ -14,50 +15,60 @@ object schema {
       fields: List[FieldDescriptorProto],
       nestedMessages: List[MessageDescriptorProto],
       nestedEnums: List[EnumDescriptorProto],
-      oneOfs: List[OneofDescriptorProto],
-      label: FieldDescriptorProtoLabel,
-      options: List[OptionValue],
-      index: Int
+      options: List[OptionValue]
   )
 
   final case class EnumDescriptorProto(
       name: String,
       symbols: NonEmptyList[(String, Int)],
-      options: List[OptionValue]
+      options: List[OptionValue] = Nil
   )
 
-  final case class OneofDescriptorProto(
-      name: String,
-      fields: NonEmptyList[FieldDescriptorProto]
-  )
+  sealed abstract class FieldDescriptorProto
+  object FieldDescriptorProto {
 
-  case class FieldDescriptorProto(
-      name: String,
-      `type`: FieldDescriptorProtoType,
-      label: FieldDescriptorProtoLabel,
-      options: List[OptionValue],
-      index: Int
-  )
+    final case class EnumFieldDescriptorProto(
+        name: String,
+        typeName: NamedTypeProto,
+        index: Int
+    ) extends FieldDescriptorProto
 
-  sealed abstract class FieldDescriptorProtoType
-  object FieldDescriptorProtoType {
-    final case object NullProto                   extends FieldDescriptorProtoType
-    final case object DoubleProto                 extends FieldDescriptorProtoType
-    final case object FloatProto                  extends FieldDescriptorProtoType
-    final case object Int32Proto                  extends FieldDescriptorProtoType
-    final case object Int64Proto                  extends FieldDescriptorProtoType
-    final case object Uint32Proto                 extends FieldDescriptorProtoType
-    final case object Uint64Proto                 extends FieldDescriptorProtoType
-    final case object Sint32Proto                 extends FieldDescriptorProtoType
-    final case object Sint64Proto                 extends FieldDescriptorProtoType
-    final case object Fixed32Proto                extends FieldDescriptorProtoType
-    final case object Fixed64Proto                extends FieldDescriptorProtoType
-    final case object Sfixed32Proto               extends FieldDescriptorProtoType
-    final case object Sfixed64Proto               extends FieldDescriptorProtoType
-    final case object BoolProto                   extends FieldDescriptorProtoType
-    final case object StringProto                 extends FieldDescriptorProtoType
-    final case object BytesProto                  extends FieldDescriptorProtoType
-    final case class NamedTypeProto(name: String) extends FieldDescriptorProtoType
+    final case class OneofDescriptorProto(
+        name: String,
+        fields: List[PlainFieldDescriptorProto] // TODO not sure this is correct
+    ) extends FieldDescriptorProto
+
+    case class PlainFieldDescriptorProto(
+        name: String,
+        `type`: ScalarValueProtoType,
+        label: FieldDescriptorProtoLabel,
+        options: List[OptionValue],
+        index: Int
+    ) extends FieldDescriptorProto
+  }
+
+  sealed abstract class FieldProtoType
+  object FieldProtoType {
+    sealed abstract class ScalarValueProtoType extends FieldProtoType
+
+    final case object NullProto                   extends ScalarValueProtoType
+    final case object DoubleProto                 extends ScalarValueProtoType
+    final case object FloatProto                  extends ScalarValueProtoType
+    final case object Int32Proto                  extends ScalarValueProtoType
+    final case object Int64Proto                  extends ScalarValueProtoType
+    final case object Uint32Proto                 extends ScalarValueProtoType
+    final case object Uint64Proto                 extends ScalarValueProtoType
+    final case object Sint32Proto                 extends ScalarValueProtoType
+    final case object Sint64Proto                 extends ScalarValueProtoType
+    final case object Fixed32Proto                extends ScalarValueProtoType
+    final case object Fixed64Proto                extends ScalarValueProtoType
+    final case object Sfixed32Proto               extends ScalarValueProtoType
+    final case object Sfixed64Proto               extends ScalarValueProtoType
+    final case object BoolProto                   extends ScalarValueProtoType
+    final case object StringProto                 extends ScalarValueProtoType
+    final case object BytesProto                  extends ScalarValueProtoType
+    final case class NamedTypeProto(name: String) extends FieldProtoType
+    final case object ObjectProto                 extends FieldProtoType
   }
 
   sealed abstract class FieldDescriptorProtoLabel
@@ -69,7 +80,7 @@ object schema {
 
   final case class FileDescriptorProto(
       name: String,
-      `package`: String,
+      `package`: Option[String],
       messageTypes: List[MessageDescriptorProto],
       enumTypes: List[EnumDescriptorProto],
       syntax: String

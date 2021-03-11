@@ -25,5 +25,8 @@ object Printer {
       }
   }
 
+  implicit def listPrinter[A: Printer]: Printer[List[A]] =
+    Printer.print[List[A]](_.map(Printer[A].print(_)).mkString("\n"))
+
   object syntax extends ToPrinterOps
 }

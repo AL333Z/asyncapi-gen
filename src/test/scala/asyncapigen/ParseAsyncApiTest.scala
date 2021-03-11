@@ -66,7 +66,7 @@ class ParseAsyncApiTest extends CatsEffectSuite {
     )
 
     for {
-      file <- IO.delay(new File(getClass.getResource(s"/a.yaml").toURI))
+      file <- IO.delay(new File(getClass.getResource(s"/basic-asyncapi.yaml").toURI))
       res  <- ParseAsyncApi.parseYamlAsyncApi[IO](YamlSource(file))
     } yield assertEquals(res, expected)
   }
