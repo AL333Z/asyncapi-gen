@@ -2,8 +2,13 @@ package asyncapigen.protobuf
 
 import asyncapigen.Printer
 import asyncapigen.Printer.syntax._
+import asyncapigen.protobuf.schema.FieldDescriptorProto.{
+  EnumFieldDescriptorProto,
+  OneofDescriptorProto,
+  PlainFieldDescriptorProto
+}
 import asyncapigen.protobuf.schema.FieldDescriptorProtoLabel.{Optional, _}
-import asyncapigen.protobuf.schema.FieldDescriptorProtoType._
+import asyncapigen.protobuf.schema.FieldProtoType._
 import asyncapigen.protobuf.schema._
 
 object print {
@@ -11,8 +16,8 @@ object print {
     s"${ov.name} = ${ov.value}"
   }
 
-  implicit val printFieldDescriptorProtoType: Printer[FieldDescriptorProtoType] = {
-    Printer[FieldDescriptorProtoType] {
+  implicit val printFieldDescriptorProtoType: Printer[FieldProtoType] = {
+    Printer[FieldProtoType] {
       case NullProto            => "null"
       case DoubleProto          => "double"
       case FloatProto           => "float"
@@ -29,6 +34,7 @@ object print {
       case BoolProto            => "bool"
       case StringProto          => "string"
       case BytesProto           => "bytes"
+      case ObjectProto          => "object"
       case NamedTypeProto(name) => name
     }
   }
@@ -42,8 +48,8 @@ object print {
 
   implicit val printEnumDescriptorProto: Printer[EnumDescriptorProto] =
     Printer.print[EnumDescriptorProto] { edp =>
-      val printOptions = edp.options.map(o => s"\toption ${o.name} = ${o.value};").mkString("\n")
-      val printSymbols = edp.symbols.map { case (s, i) => s"\t$s = $i;" }.toList.mkString("\n")
+      val printOptions = edp.options.map(o => s"option ${o.name} = ${o.value};").leftSpaced
+      val printSymbols = edp.symbols.map { case (s, i) => s"$s = $i;" }.toList.leftSpaced
       s"""
         |enum ${edp.name} {
         |$printOptions
@@ -52,49 +58,52 @@ object print {
       """.stripMargin
     }
 
-  implicit val printOneofDescriptorProto: Printer[OneofDescriptorProto] =
+  implicit val printEnumFieldDescriptorProto: Printer[EnumFieldDescriptorProto] =
+    Printer.print[EnumFieldDescriptorProto] { edp =>
+      s"${edp.label.print} ${edp.enum.name} ${edp.name} = ${edp.index};".stripLeading()
+    }
+
+  private val printPlainFieldDescriptorProto: Printer[PlainFieldDescriptorProto] =
+    Printer.print[PlainFieldDescriptorProto] { pfdp =>
+      def printOptions(options: List[OptionValue]): String =
+        if (options.isEmpty)
+          ""
+        else
+          options.map(_.print).mkString(start = "[", sep = ", ", end = "]")
+
+      s"${pfdp.label.print} ${pfdp.`type`.print} ${pfdp.name} = ${pfdp.index}${printOptions(pfdp.options)};"
+        .stripLeading()
+    }
+
+  private val printOneofDescriptorProto: Printer[OneofDescriptorProto] =
     Printer.print[OneofDescriptorProto] { oodp =>
       val printFields =
         oodp.fields
           .map(f => s"${f.`type`.print} ${f.name} = ${f.index};")
-          .toList
-          .mkString("\n")
-
+          .leftSpaced
       s"""
-        |oneof ${oodp.name} {
-        |  $printFields
-        |}
+         |oneof ${oodp.name} {
+         |$printFields
+         |}
       """.stripMargin
     }
 
+  implicit val printFieldDescriptorProto: Printer[FieldDescriptorProto] = Printer.print[FieldDescriptorProto] {
+    case e: EnumFieldDescriptorProto  => printEnumFieldDescriptorProto.print(e)
+    case o: OneofDescriptorProto      => printOneofDescriptorProto.print(o)
+    case f: PlainFieldDescriptorProto => printPlainFieldDescriptorProto.print(f)
+  }
+
   implicit val printMessageDescriptorProto: Printer[MessageDescriptorProto] =
     Printer.print[MessageDescriptorProto] { mdp =>
-      def printOptions(options: List[OptionValue]) =
-        if (options.isEmpty)
-          ""
-        else
-          options.map(_.print).mkString(start = " [", sep = ", ", end = "]")
-
-      val printFields =
-        mdp.fields
-          .map { field =>
-            s"${field.label.print} ${field.`type`.print} ${field.name} = ${field.index}${printOptions(field.options)};"
-              .stripLeading()
-          }
-          .mkString("\n")
-      val printNestedMessages: String = mdp.nestedMessages.map(_.print).mkString("\n")
-      val printNestedEnums            = mdp.nestedEnums.map(_.print).mkString("\n")
-      val printOneOfs                 = mdp.oneOfs.map(_.print)
-
+      val printFields         = mdp.fields.map(_.print).leftSpaced
+      val printNestedMessages = mdp.nestedMessages.map(_.print).leftSpaced
+      val printNestedEnums    = mdp.nestedEnums.map(_.print).leftSpaced
       s"""
          |message ${mdp.name} {
-         |  $printFields
-         |  
-         |  $printNestedMessages
-         |  
-         |  $printNestedEnums
-         |  
-         |  $printOneOfs
+         |$printFields
+         |$printNestedMessages
+         |$printNestedEnums
          |}
       """.stripMargin
     }
@@ -102,15 +111,25 @@ object print {
   implicit val printFileDescriptorProto: Printer[FileDescriptorProto] =
     Printer.print[FileDescriptorProto] { case FileDescriptorProto(_, pckage, messages, enums, syntax) =>
       s"""
-           |syntax = "$syntax";
-           |
-           |package $pckage;
-           |
-           |${messages.map(_.print).mkString("\n")}
-           |
-           |${enums.map(_.print).mkString("\n")}
-           |
-           |""".stripMargin
+      |syntax = "$syntax";
+      |${pckage.fold("")(x => s"package $x;")}
+      |${messages.map(_.print).mkString("\n")}
+      |${enums.map(_.print).mkString("\n")}
+      |""".stripMargin
     }
 
+  implicit class RichListString(val inner: List[String]) extends AnyVal {
+    def leftSpaced: String = inner.map(_.leftSpacedAllLines).mkString("\n")
+  }
+
+  implicit class RichString(val inner: String) extends AnyVal {
+    def leftSpaced: String         = "  " + inner
+    def leftSpacedAllLines: String = inner.split('\n').map(_.leftSpaced).mkString("\n")
+
+    def normalized: String = {
+      val str = inner.replaceAll("\\s*[(\\r\\n|\\r|\\n)]+", "\n")
+      println(str)
+      str
+    }
+  }
 }

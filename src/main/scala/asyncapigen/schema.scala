@@ -244,7 +244,7 @@ object schema {
 
   implicit val itemObjectDecoder: Decoder[Channel.ItemObject] =
     Decoder.forProduct5(
-      "ref",
+      s"$$ref",
       "description",
       "subscribe",
       "publish",
