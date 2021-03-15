@@ -34,7 +34,6 @@ object print {
       case BoolProto            => "bool"
       case StringProto          => "string"
       case BytesProto           => "bytes"
-      case ObjectProto          => "object"
       case NamedTypeProto(name) => name
     }
   }
@@ -78,14 +77,17 @@ object print {
   private val printOneofDescriptorProto: Printer[OneofDescriptorProto] =
     Printer.print[OneofDescriptorProto] { oodp =>
       val printFields =
-        oodp.fields
-          .map(f => s"${f.`type`.print} ${f.name} = ${f.index};")
-          .leftSpaced
+        oodp.fields.map {
+          case Right(EnumFieldDescriptorProto(name, enum, label, index)) =>
+            s"${label.print} ${enum.name} $name = $index;".stripLeading()
+          case Left(PlainFieldDescriptorProto(name, tpe, label, _, index)) =>
+            s"${label.print} ${tpe.print} $name = $index;".stripLeading()
+        }.leftSpaced
       s"""
-         |oneof ${oodp.name} {
+         |${oodp.label.print} oneof ${oodp.name} {
          |$printFields
          |}
-      """.stripMargin
+      """.stripMargin.stripLeading()
     }
 
   implicit val printFieldDescriptorProto: Printer[FieldDescriptorProto] = Printer.print[FieldDescriptorProto] {
@@ -125,11 +127,9 @@ object print {
   implicit class RichString(val inner: String) extends AnyVal {
     def leftSpaced: String         = "  " + inner
     def leftSpacedAllLines: String = inner.split('\n').map(_.leftSpaced).mkString("\n")
-
-    def normalized: String = {
-      val str = inner.replaceAll("\\s*[(\\r\\n|\\r|\\n)]+", "\n")
-      println(str)
-      str
-    }
+    def normalized: String =
+      inner
+        .replaceAll("\\s*[(\\r\\n|\\r|\\n)]+", "\n")
+        .replaceAll("\\{\\s*\\}", "{}")
   }
 }
