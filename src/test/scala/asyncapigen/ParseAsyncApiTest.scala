@@ -4,7 +4,7 @@ import asyncapigen.ParseAsyncApi.YamlSource
 import asyncapigen.schema.Channel.{ItemObject, Operation}
 import asyncapigen.schema.Schema.BasicSchema.StringSchema
 import asyncapigen.schema.Schema.ObjectSchema
-import asyncapigen.schema.{AsyncApi, Components, Info, Message, Reference}
+import asyncapigen.schema.{AsyncApi, Info, Message}
 import cats.effect.IO
 import munit.CatsEffectSuite
 
@@ -34,40 +34,38 @@ class ParseAsyncApiTest extends CatsEffectSuite {
               description = None,
               tags = List(),
               externalDocs = None,
-              message = Some(Right(Reference("#/components/messages/UserSignedUp")))
+              message = Some(
+                Left(
+                  value = Message(
+                    payload = Left(
+                      value = ObjectSchema(
+                        required = Nil,
+                        properties = Map(
+                          "displayName" -> StringSchema,
+                          "email"       -> StringSchema
+                        )
+                      )
+                    ),
+                    tags = Nil,
+                    name = None,
+                    description = None
+                  )
+                )
+              )
             )
           ),
           publish = None,
           parameters = List()
         )
       ),
-      components = Some(
-        Components(
-          schemas = Map(),
-          messages = Map(
-            "UserSignedUp" -> Left(
-              Message(
-                payload = Left(
-                  ObjectSchema(
-                    required = List(),
-                    properties = Map("displayName" -> StringSchema, "email" -> StringSchema)
-                  )
-                ),
-                tags = List(),
-                description = None
-              )
-            )
-          ),
-          parameters = Map()
-        )
-      ),
+      components = None,
       tags = List(),
       externalDocs = None
     )
 
     for {
       file <- IO.delay(new File(getClass.getResource(s"/basic-asyncapi.yaml").toURI))
-      res  <- ParseAsyncApi.parseYamlAsyncApi[IO](YamlSource(file))
+      res  <- ParseAsyncApi.parseYamlAsyncApiSource[IO](YamlSource(file))
     } yield assertEquals(res, expected)
   }
 
