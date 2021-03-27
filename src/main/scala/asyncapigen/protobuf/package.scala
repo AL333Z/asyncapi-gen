@@ -12,7 +12,7 @@ import asyncapigen.schema.Schema.BasicSchema
 import asyncapigen.schema.{AsyncApi, Message, Reference, Schema}
 import cats.implicits._
 
-import scala.util.Try
+import scala.util.{Success, Try}
 
 package object protobuf {
 
@@ -25,7 +25,7 @@ package object protobuf {
             .appendedAll(item.publish.toList)
             .traverse(op =>
               extractMessages(
-//              asyncApi,
+                asyncApi,
                 name,
                 op.message
               )
@@ -42,29 +42,40 @@ package object protobuf {
       .sequence
 
   private def extractMessages(
-//      asyncApi: AsyncApi,
+      asyncApi: AsyncApi,
       name: String,
       message: Option[Either[Message, Reference]]
-  ): Try[List[MessageDescriptorProto]] = Try {
+  ): Try[List[MessageDescriptorProto]] =
     message match {
       case Some(Left(message)) =>
         message.payload match {
           case Left(schema) =>
             val messageName = message.name.getOrElse(name.split('/').last.capitalize) // TODO what to put here?
-            List(
-              MessageDescriptorProto(
-                name = messageName,
-                fields = toFieldDescriptorProtos(schema),
-                nestedMessages = Nil, // TODO
-                nestedEnums = Nil,    // TODO
-                options = Nil         // TODO
+            Success(
+              List(
+                MessageDescriptorProto(
+                  name = messageName,
+                  fields = toFieldDescriptorProtos(schema),
+                  nestedMessages = Nil, // TODO
+                  nestedEnums = Nil,    // TODO
+                  options = Nil         // TODO
+                )
               )
             )
-          case Right(_) => ??? //resolveMessageDescriptorProtoFromRef(asyncApi, ref) // TODO
+          case Right(ref) => resolveMessageDescriptorProtoFromRef(asyncApi, ref)
         }
-      case Some(Right(_)) => ??? //resolveMessageDescriptorProtoFromRef(asyncApi, ref) // TODO
-      case None           => Nil
+      case Some(Right(ref)) => resolveMessageDescriptorProtoFromRef(asyncApi, ref)
+      case None             => Success(Nil)
     }
+
+  private def resolveMessageDescriptorProtoFromRef(
+      asyncApi: AsyncApi,
+      ref: Reference
+  ): Try[List[MessageDescriptorProto]] = {
+    // TODO this is a strong and wrong assumption. Refs should be fully supported!
+    val messageName = ref.ref.split("#/components/messages/")(1)
+    val message     = asyncApi.components.flatMap(_.messages.get(messageName))
+    extractMessages(asyncApi, messageName, message)
   }
 
   private def toFieldDescriptorProtos(schema: Schema): List[FieldDescriptorProto] =
