@@ -40,7 +40,7 @@ object schema {
     final case class Variable(enum: List[String], default: String, description: Option[String])
   }
 
-  final case class Reference(ref: String)
+  final case class Reference(value: String)
 
   object Channel {
     final case class ItemObject(

@@ -73,7 +73,7 @@ package object protobuf {
       ref: Reference
   ): Try[List[MessageDescriptorProto]] = {
     // TODO this is a strong and wrong assumption. Refs should be fully supported!
-    val messageName = ref.ref.split("#/components/messages/")(1)
+    val messageName = ref.value.split("#/components/messages/")(1)
     val message     = asyncApi.components.flatMap(_.messages.get(messageName))
     extractMessages(asyncApi, messageName, message)
   }
@@ -83,7 +83,7 @@ package object protobuf {
       case Schema.RefSchema(_) => ???
       case Schema.SumSchema(_) => ???
       case Schema.ObjectSchema(required, properties) =>
-        properties.zipWithIndex.toList
+        properties.zipWithIndex.toList // TODO understand how to keep track of field indexes
           .map { case ((fieldName, v), i) =>
             v match {
               case Schema.RefSchema(_)       => ???
