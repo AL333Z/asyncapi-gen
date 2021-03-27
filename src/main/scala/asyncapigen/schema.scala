@@ -40,7 +40,7 @@ object schema {
     final case class Variable(enum: List[String], default: String, description: Option[String])
   }
 
-  final case class Reference(ref: String)
+  final case class Reference(value: String)
 
   object Channel {
     final case class ItemObject(
@@ -69,6 +69,7 @@ object schema {
   final case class Message(
       payload: Either[Schema, Reference],
       tags: List[String],
+      name: Option[String],
       description: Option[String]
   )
 
@@ -202,12 +203,18 @@ object schema {
     Decoder[Schema].either(Decoder[Reference])
 
   implicit val messageDecoder: Decoder[Message] =
-    Decoder.forProduct3(
+    Decoder.forProduct4(
       "payload",
+      "name",
       "description",
       "tags"
-    )((payload: Either[Schema, Reference], description: Option[String], tags: Option[List[String]]) =>
-      Message(payload = payload, description = description, tags = tags.getOrElse(List.empty))
+    )(
+      (
+          payload: Either[Schema, Reference],
+          name: Option[String],
+          description: Option[String],
+          tags: Option[List[String]]
+      ) => Message(payload = payload, name = name, description = description, tags = tags.getOrElse(List.empty))
     )
 
   implicit val parameterDecoder: Decoder[Parameter] =

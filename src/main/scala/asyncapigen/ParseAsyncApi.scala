@@ -29,28 +29,31 @@ object ParseAsyncApi {
   case class YamlSource(file: File)
   case class JsonSource(file: File)
 
-  def parseYamlAsyncApi[F[_]: Sync](yamlSource: YamlSource): F[AsyncApi] = {
-    readContent(yamlSource.file).flatMap(x =>
-      Sync[F].fromEither(
-        io.circe.yaml.parser
-          .parse(x)
-          .leftMap(_.asLeft)
-          .flatMap(Decoder[AsyncApi].decodeJson(_).leftMap(_.asRight))
-          .left
-          .map { x =>
-            x.map(d => println(s"${d.message} ${CursorOp.opsToPath(d.history)}"))
-            x.valueOr(identity)
-          }
-      )
+  def parseYamlAsyncApiSource[F[_]: Sync](yamlSource: YamlSource): F[AsyncApi] =
+    readContent(yamlSource.file).flatMap(parseYamlAsyncApiContent[F])
+
+  def parseYamlAsyncApiContent[F[_]: Sync](content: String): F[AsyncApi] = {
+    Sync[F].fromEither(
+      io.circe.yaml.parser
+        .parse(content)
+        .leftMap(_.asLeft)
+        .flatMap(Decoder[AsyncApi].decodeJson(_).leftMap(_.asRight))
+        .left
+        .map { x =>
+          x.map(d => println(s"${d.message} ${CursorOp.opsToPath(d.history)}"))
+          x.valueOr(identity)
+        }
     )
   }
 
-  def parseJsonAsyncApi[F[_]: Sync](input: JsonSource): F[AsyncApi] =
+  def parseJsonAsyncApiContent[F[_]: Sync](input: String): F[AsyncApi] =
     for {
-      content  <- readContent(input.file)
-      json     <- Sync[F].fromEither(io.circe.parser.parse(content))
+      json     <- Sync[F].fromEither(io.circe.parser.parse(input))
       asyncApi <- Sync[F].fromEither(Decoder[AsyncApi].decodeJson(json))
     } yield asyncApi
+
+  def parseJsonAsyncApiSource[F[_]: Sync](input: JsonSource): F[AsyncApi] =
+    readContent(input.file).flatMap(parseJsonAsyncApiContent[F])
 
   private def readContent[F[_]: Sync](file: File): F[String] =
     Resource.fromAutoCloseable(Sync[F].delay(scala.io.Source.fromFile(file))).use { s =>

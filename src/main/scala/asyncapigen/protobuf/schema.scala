@@ -1,6 +1,5 @@
 package asyncapigen.protobuf
 
-import asyncapigen.protobuf.schema.FieldProtoType.{NamedTypeProto, ScalarValueProtoType}
 import cats.data.NonEmptyList
 
 /**
@@ -29,18 +28,20 @@ object schema {
 
     final case class EnumFieldDescriptorProto(
         name: String,
-        typeName: NamedTypeProto,
+        enum: EnumDescriptorProto,
+        label: FieldDescriptorProtoLabel,
         index: Int
     ) extends FieldDescriptorProto
 
     final case class OneofDescriptorProto(
         name: String,
-        fields: List[PlainFieldDescriptorProto] // TODO not sure this is correct
+        label: FieldDescriptorProtoLabel,
+        fields: List[Either[PlainFieldDescriptorProto, EnumFieldDescriptorProto]]
     ) extends FieldDescriptorProto
 
     case class PlainFieldDescriptorProto(
         name: String,
-        `type`: ScalarValueProtoType,
+        `type`: FieldProtoType,
         label: FieldDescriptorProtoLabel,
         options: List[OptionValue],
         index: Int
@@ -49,26 +50,23 @@ object schema {
 
   sealed abstract class FieldProtoType
   object FieldProtoType {
-    sealed abstract class ScalarValueProtoType extends FieldProtoType
-
-    final case object NullProto                   extends ScalarValueProtoType
-    final case object DoubleProto                 extends ScalarValueProtoType
-    final case object FloatProto                  extends ScalarValueProtoType
-    final case object Int32Proto                  extends ScalarValueProtoType
-    final case object Int64Proto                  extends ScalarValueProtoType
-    final case object Uint32Proto                 extends ScalarValueProtoType
-    final case object Uint64Proto                 extends ScalarValueProtoType
-    final case object Sint32Proto                 extends ScalarValueProtoType
-    final case object Sint64Proto                 extends ScalarValueProtoType
-    final case object Fixed32Proto                extends ScalarValueProtoType
-    final case object Fixed64Proto                extends ScalarValueProtoType
-    final case object Sfixed32Proto               extends ScalarValueProtoType
-    final case object Sfixed64Proto               extends ScalarValueProtoType
-    final case object BoolProto                   extends ScalarValueProtoType
-    final case object StringProto                 extends ScalarValueProtoType
-    final case object BytesProto                  extends ScalarValueProtoType
+    final case object NullProto                   extends FieldProtoType
+    final case object DoubleProto                 extends FieldProtoType
+    final case object FloatProto                  extends FieldProtoType
+    final case object Int32Proto                  extends FieldProtoType
+    final case object Int64Proto                  extends FieldProtoType
+    final case object Uint32Proto                 extends FieldProtoType
+    final case object Uint64Proto                 extends FieldProtoType
+    final case object Sint32Proto                 extends FieldProtoType
+    final case object Sint64Proto                 extends FieldProtoType
+    final case object Fixed32Proto                extends FieldProtoType
+    final case object Fixed64Proto                extends FieldProtoType
+    final case object Sfixed32Proto               extends FieldProtoType
+    final case object Sfixed64Proto               extends FieldProtoType
+    final case object BoolProto                   extends FieldProtoType
+    final case object StringProto                 extends FieldProtoType
+    final case object BytesProto                  extends FieldProtoType
     final case class NamedTypeProto(name: String) extends FieldProtoType
-    final case object ObjectProto                 extends FieldProtoType
   }
 
   sealed abstract class FieldDescriptorProtoLabel
