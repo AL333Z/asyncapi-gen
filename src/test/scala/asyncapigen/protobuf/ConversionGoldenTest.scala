@@ -92,6 +92,70 @@ class ConversionGoldenTest extends CatsEffectSuite {
     checkConversion(input, expectedProtobufs)
   }
 
+  test("asyncapi to protobuf - refs and oneof") {
+    val input: String =
+      s"""
+         |asyncapi: 2.0.0
+         |info:
+         |  title: Document Service
+         |  version: 1.0.0
+         |  description: This service is in charge of processing document updates
+         |channels:
+         |  document/documentStateChange:
+         |    subscribe:
+         |      message:
+         |        $$ref: '#/components/messages/DocumentStateChange'
+         |components:
+         |  messages:
+         |    DocumentStateChange:
+         |      payload:
+         |        type: object
+         |        required:
+         |          - id
+         |          - documentType
+         |          - eventType
+         |        properties:
+         |          id:
+         |            type: string
+         |            format: uuid
+         |            description: The message identifier
+         |          documentType:
+         |            type: string
+         |            description: Type of the document
+         |          eventType:
+         |            oneOf:
+         |              - $$ref: '#/components/messages/DocumentCreatedEvent'
+         |              - $$ref: '#/components/messages/DocumentSignedEvent'
+         |    DocumentCreatedEvent:
+         |      payload:
+         |        type: object
+         |    DocumentSignedEvent:
+         |      payload:
+         |        type: object
+         |
+         |""".stripMargin
+
+    // FIXME the indexes in the oneof are wrong, adjust the test once we add support for those!
+    val expectedProtobufs = List(
+      s"""
+         |syntax = "proto3";
+         |
+         |message DocumentStateChange {
+         |  string id = 1;
+         |  string documentType = 2;
+         |  oneof eventType {
+         |    DocumentCreatedEvent documentCreatedEvent = 1;
+         |    DocumentSignedEvent documentSignedEvent = 2;
+         |  }
+         |}
+         |message DocumentCreatedEvent {}
+         |message DocumentSignedEvent {}
+         |""".stripMargin
+    )
+
+    checkConversion(input, expectedProtobufs)
+  }
+
   private def checkConversion(input: String, expectedProtobufs: List[String]): IO[Unit] = {
     for {
       asyncApi  <- ParseAsyncApi.parseYamlAsyncApiContent[IO](input)
