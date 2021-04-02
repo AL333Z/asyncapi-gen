@@ -156,6 +156,44 @@ class ConversionGoldenTest extends CatsEffectSuite {
     checkConversion(input, expectedProtobufs)
   }
 
+  test("asyncapi to protobuf - enums") {
+    val input: String =
+      s"""
+         |asyncapi: 2.0.0
+         |info:
+         |  title: Account Service
+         |  version: 1.0.0
+         |  description: This service is in charge of processing user signups
+         |channels:
+         |  user/signedup:
+         |    subscribe:
+         |      message:
+         |        name: UserSignedUp
+         |        payload:
+         |          type: object
+         |          properties:
+         |            myEnum:
+         |              type: string
+         |              enum: [ bar, foo ]
+         |""".stripMargin
+
+    val expectedProtobufs = List(
+      s"""
+         |syntax = "proto3";
+         |
+         |message UserSignedUp {
+         |  optional MyEnum myEnum = 1;
+         |  enum MyEnum {
+         |    bar = 0;
+         |    foo = 1;
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+    checkConversion(input, expectedProtobufs)
+  }
+
   private def checkConversion(input: String, expectedProtobufs: List[String]): IO[Unit] = {
     for {
       asyncApi  <- ParseAsyncApi.parseYamlAsyncApiContent[IO](input)

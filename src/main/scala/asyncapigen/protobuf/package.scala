@@ -28,15 +28,11 @@ package object protobuf {
                 asyncApi,
                 name,
                 op.message
-              )
+              ).map(_.toList)
             )
           messagesFromRefs <- asyncApi.components.toList
             .flatMap(_.messages.map { case (name, item) =>
-              extractMessages(
-                asyncApi,
-                name,
-                Some(item)
-              )
+              extractMessages(asyncApi, name, Some(item)).map(_.toList)
             })
             .flatSequence[Try, MessageDescriptorProto]
         } yield FileDescriptorProto(
@@ -54,39 +50,42 @@ package object protobuf {
       asyncApi: AsyncApi,
       name: String,
       message: Option[Either[Message, Reference]]
-  ): Try[List[MessageDescriptorProto]] =
+  ): Try[Option[MessageDescriptorProto]] =
     message match {
       case Some(Left(message)) =>
         message.payload match {
           case Left(schema) =>
             val messageName = message.name.getOrElse(name.split('/').last.capitalize) // TODO what to put here?
             toFieldDescriptorProtos(asyncApi, schema).map(x =>
-              List(
+              Some(
                 MessageDescriptorProto(
                   name = messageName,
-                  fields = x,
+                  fields = x._1,
                   nestedMessages = Nil, // TODO
-                  nestedEnums = Nil,    // TODO
-                  options = Nil         // TODO
+                  nestedEnums = x._2,
+                  options = Nil // TODO
                 )
               )
             )
           case Right(ref) => resolveMessageDescriptorProtoFromRef(asyncApi, ref)
         }
-      case _ => Success(Nil)
+      case _ => Success(None)
     }
 
   private def resolveMessageDescriptorProtoFromRef(
       asyncApi: AsyncApi,
       ref: Reference
-  ): Try[List[MessageDescriptorProto]] = {
+  ): Try[Option[MessageDescriptorProto]] = {
     // TODO this is a strong and wrong assumption. Refs should be fully supported!
     val messageName = ref.value.split("#/components/messages/")(1)
     val message     = asyncApi.components.flatMap(_.messages.get(messageName))
     extractMessages(asyncApi, messageName, message)
   }
 
-  private def toFieldDescriptorProtos(asyncApi: AsyncApi, schema: Schema): Try[List[FieldDescriptorProto]] =
+  private def toFieldDescriptorProtos(
+      asyncApi: AsyncApi,
+      schema: Schema
+  ): Try[(List[FieldDescriptorProto], List[EnumDescriptorProto])] =
     schema match {
       case Schema.RefSchema(_)                       => ???
       case Schema.SumSchema(_)                       => ???
@@ -100,19 +99,41 @@ package object protobuf {
       asyncApi: AsyncApi,
       required: List[String],
       properties: Map[String, Schema]
-  ): Try[List[FieldDescriptorProto]] = {
+  ): Try[(List[FieldDescriptorProto], List[EnumDescriptorProto])] = {
     properties.zipWithIndex.toList // TODO understand how to keep track of field indexes
-      .flatTraverse { case ((fieldName, v), i) =>
-        v match {
-          case Schema.RefSchema(ref) =>
-            resolveMessageDescriptorProtoFromRef(asyncApi, ref).map(_.flatMap(_.fields))
-          case Schema.SumSchema(oneOfs) =>
-            Success(List(toOneofDescriptorProto(asyncApi, required, fieldName, oneOfs.zipWithIndex))) // TODO indexes!
-          case Schema.ObjectSchema(required, properties) => extractFromObjectSchema(asyncApi, required, properties)
-          case Schema.ArraySchema(_)                     => ???
-          case Schema.EnumSchema(_)                      => ???
-          case bs: BasicSchema                           => Success(toPlainFieldDescriptorProto(required, fieldName, i, bs))
-        }
+      .foldLeftM[Try, (List[FieldDescriptorProto], List[EnumDescriptorProto])]((Nil, Nil)) {
+        case ((fieldsAcc, enumsAcc), ((fieldName, v), i)) =>
+          v match {
+            case Schema.RefSchema(ref) =>
+              val value: Try[List[FieldDescriptorProto]] =
+                resolveMessageDescriptorProtoFromRef(asyncApi, ref).map(_.toList.flatMap(_.fields))
+              value.map(x => (fieldsAcc ++ x, enumsAcc))
+            case Schema.SumSchema(oneOfs) =>
+              Success(
+                (fieldsAcc :+ toOneofDescriptorProto(asyncApi, required, fieldName, oneOfs.zipWithIndex), enumsAcc)
+              ) // TODO indexes!
+            case Schema.ObjectSchema(required, properties) =>
+              extractFromObjectSchema(asyncApi, required, properties).map { case (fields, enums) =>
+                (fieldsAcc ++ fields, enumsAcc ++ enums)
+              }
+            case Schema.ArraySchema(_) => ???
+            case Schema.EnumSchema(enum) =>
+              val enumTypeName = uppercaseFirstLetter(fieldName)
+              Success(
+                (
+                  fieldsAcc :+ PlainFieldDescriptorProto(
+                    name = fieldName,
+                    `type` = NamedTypeProto(enumTypeName),
+                    label = toFieldDescriptorProtoLabel(required, fieldName),
+                    options = Nil,
+                    index = i + 1 // TODO how to handle indexes?
+                  ),
+                  enumsAcc :+ EnumDescriptorProto(enumTypeName, NonEmptyList.fromListUnsafe(enum.zipWithIndex))
+                )
+              )
+            case bs: BasicSchema =>
+              Success((fieldsAcc ++ toPlainFieldDescriptorProto(required, fieldName, i, bs), enumsAcc))
+          }
       }
   }
 
@@ -161,6 +182,9 @@ package object protobuf {
 
   private def lowercaseFirstLetter(str: String): String =
     s"${Character.toLowerCase(str.charAt(0))}${str.substring(1)}"
+
+  private def uppercaseFirstLetter(str: String): String =
+    s"${Character.toUpperCase(str.charAt(0))}${str.substring(1)}"
 
   private def toPlainFieldDescriptorProto(
       required: List[String],
