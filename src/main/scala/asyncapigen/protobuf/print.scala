@@ -80,7 +80,7 @@ object print {
         oodp.fields.map {
           case Right(EnumFieldDescriptorProto(name, enum, label, index)) =>
             s"${label.print} ${enum.name} $name = $index;".stripLeading()
-          case Left(PlainFieldDescriptorProto(name, tpe, label, _, index)) =>
+          case Left(PlainFieldDescriptorProto(name, tpe, label, _, index, _)) =>
             s"${label.print} ${tpe.print} $name = $index;".stripLeading()
         }.leftSpaced
       s"""

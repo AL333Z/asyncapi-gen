@@ -147,9 +147,9 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |    DocumentCreatedEvent documentCreatedEvent = 1;
          |    DocumentSignedEvent documentSignedEvent = 2;
          |  }
+         |  message DocumentCreatedEvent {}
+         |  message DocumentSignedEvent {}
          |}
-         |message DocumentCreatedEvent {}
-         |message DocumentSignedEvent {}
          |""".stripMargin
     )
 

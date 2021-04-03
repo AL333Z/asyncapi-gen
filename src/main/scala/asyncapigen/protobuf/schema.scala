@@ -44,7 +44,8 @@ object schema {
         `type`: FieldProtoType,
         label: FieldDescriptorProtoLabel,
         options: List[OptionValue],
-        index: Int
+        index: Int,
+        messageProto: Option[MessageDescriptorProto] = None
     ) extends FieldDescriptorProto
   }
 
