@@ -66,13 +66,13 @@ package object protobuf {
         message.payload match {
           case Left(schema) =>
             val messageName = message.name.getOrElse(name.split('/').last.capitalize) // TODO what to put here?
-            toFieldDescriptorProtos(asyncApi, schema).map(x =>
+            extractMessageComponents(asyncApi, schema).map(components =>
               Some(
                 MessageDescriptorProto(
                   name = messageName,
-                  fields = x.fields,
-                  nestedMessages = x.messages,
-                  nestedEnums = x.enums,
+                  fields = components.fields,
+                  nestedMessages = components.messages,
+                  nestedEnums = components.enums,
                   options = Nil // TODO
                 )
               )
@@ -93,7 +93,7 @@ package object protobuf {
     extractMessages(asyncApi, messageName, message)
   }
 
-  private def toFieldDescriptorProtos(
+  private def extractMessageComponents(
       asyncApi: AsyncApi,
       schema: Schema
   ): Try[MessageComponents] =
