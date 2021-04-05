@@ -23,21 +23,28 @@ object schema {
       options: List[OptionValue] = Nil
   )
 
-  sealed abstract class FieldDescriptorProto
+  sealed abstract class FieldDescriptorProto {
+    def repeated: FieldDescriptorProto
+  }
   object FieldDescriptorProto {
-
     final case class EnumFieldDescriptorProto(
         name: String,
         enum: EnumDescriptorProto,
         label: FieldDescriptorProtoLabel,
         index: Int
-    ) extends FieldDescriptorProto
+    ) extends FieldDescriptorProto {
+      override def repeated: EnumFieldDescriptorProto =
+        copy(label = FieldDescriptorProtoLabel.Repeated)
+    }
 
     final case class OneofDescriptorProto(
         name: String,
         label: FieldDescriptorProtoLabel,
         fields: List[Either[PlainFieldDescriptorProto, EnumFieldDescriptorProto]]
-    ) extends FieldDescriptorProto
+    ) extends FieldDescriptorProto {
+      override def repeated: OneofDescriptorProto =
+        copy(label = FieldDescriptorProtoLabel.Repeated)
+    }
 
     case class PlainFieldDescriptorProto(
         name: String,
@@ -46,7 +53,10 @@ object schema {
         options: List[OptionValue],
         index: Int,
         messageProto: Option[MessageDescriptorProto] = None
-    ) extends FieldDescriptorProto
+    ) extends FieldDescriptorProto {
+      override def repeated: PlainFieldDescriptorProto =
+        copy(label = FieldDescriptorProtoLabel.Repeated)
+    }
   }
 
   sealed abstract class FieldProtoType

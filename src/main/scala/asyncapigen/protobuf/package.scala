@@ -111,22 +111,23 @@ package object protobuf {
       required: List[String],
       properties: Map[String, Schema]
   ): Try[MessageComponents] = {
-    properties.zipWithIndex.toList // TODO understand how to keep track of field indexes
-      .foldLeftM[Try, MessageComponents](Monoid[MessageComponents].empty) { case (acc, ((fieldName, v), i)) =>
-        v match {
-          case Schema.RefSchema(ref) =>
-            resolveMessageDescriptorProtoFromRef(asyncApi, ref)
-              .map(_.toList.flatMap(_.fields))
-              .map(acc.appendFields)
-          case Schema.SumSchema(oneOfs) => // TODO indexes!
-            val oneofDescriptorProto = toOneofDescriptorProto(asyncApi, required, fieldName, oneOfs.zipWithIndex)
-            Success(acc.combine(oneofDescriptorProto))
-          case Schema.ObjectSchema(required, properties) =>
-            extractFromObjectSchema(asyncApi, required, properties).map(acc.combine)
-          case Schema.ArraySchema(_) => ???
-          case Schema.EnumSchema(enum) =>
-            val enumTypeName = uppercaseFirstLetter(fieldName)
-            Success(
+    def go(acc: MessageComponents, fieldName: String, v: Schema, i: Int): Try[MessageComponents] = {
+      v match {
+        case Schema.RefSchema(ref) =>
+          resolveMessageDescriptorProtoFromRef(asyncApi, ref)
+            .map(_.toList.flatMap(_.fields))
+            .map(acc.appendFields)
+        case Schema.SumSchema(oneOfs) => // TODO indexes!
+          val oneofDescriptorProto = toOneofDescriptorProto(asyncApi, required, fieldName, oneOfs.zipWithIndex)
+          Success(acc.combine(oneofDescriptorProto))
+        case Schema.ObjectSchema(required, properties) =>
+          extractFromObjectSchema(asyncApi, required, properties).map(acc.combine)
+        case Schema.ArraySchema(schema) =>
+          go(acc, fieldName, schema, i).map(components => components.copy(fields = components.fields.map(_.repeated)))
+        case Schema.EnumSchema(enum) =>
+          val enumTypeName = uppercaseFirstLetter(fieldName)
+          Try(NonEmptyList.fromListUnsafe(enum.zipWithIndex))
+            .map(enumValues =>
               acc
                 .appendField(
                   PlainFieldDescriptorProto(
@@ -137,11 +138,16 @@ package object protobuf {
                     index = i + 1 // TODO how to handle indexes?
                   )
                 )
-                .appendEnum(EnumDescriptorProto(enumTypeName, NonEmptyList.fromListUnsafe(enum.zipWithIndex)))
+                .appendEnum(EnumDescriptorProto(enumTypeName, enumValues))
             )
-          case bs: BasicSchema =>
-            Success(acc.appendFields(toPlainFieldDescriptorProto(required, fieldName, i, bs)))
-        }
+        case bs: BasicSchema =>
+          Success(acc.appendFields(toPlainFieldDescriptorProto(required, fieldName, i, bs)))
+      }
+    }
+
+    properties.zipWithIndex.toList // TODO understand how to keep track of field indexes
+      .foldLeftM[Try, MessageComponents](Monoid[MessageComponents].empty) { case (acc, ((fieldName, v), i)) =>
+        go(acc, fieldName, v, i)
       }
   }
 
@@ -150,19 +156,18 @@ package object protobuf {
       required: List[String],
       fieldName: String,
       oneOfs: List[(Schema, Int)]
-  ): MessageComponents = {
+  ): MessageComponents = { // TODO maybe this should be a Try?
     val fields: List[Either[PlainFieldDescriptorProto, EnumFieldDescriptorProto]] = oneOfs.flatMap { case (s, i) =>
       s match {
         case Schema.RefSchema(ref) =>
-          val x: MessageDescriptorProto = resolveMessageDescriptorProtoFromRef(asyncApi, ref).get.head // TODO
-          List(
+          resolveMessageDescriptorProtoFromRef(asyncApi, ref).toOption.flatten.toList.map(message =>
             PlainFieldDescriptorProto(
-              name = lowercaseFirstLetter(x.name),
-              `type` = NamedTypeProto(x.name),
+              name = lowercaseFirstLetter(message.name),
+              `type` = NamedTypeProto(message.name),
               label = toFieldDescriptorProtoLabel(required, fieldName),
               options = Nil,
               index = i + 1, // TODO how to handle indexes?
-              messageProto = Some(x)
+              messageProto = Some(message)
             ).asLeft
           )
         case Schema.SumSchema(_)       => ??? // TODO not supported in protobuf?
@@ -200,10 +205,10 @@ package object protobuf {
   }
 
   private def lowercaseFirstLetter(str: String): String =
-    s"${Character.toLowerCase(str.charAt(0))}${str.substring(1)}"
+    if (str.isEmpty) "" else s"${Character.toLowerCase(str.charAt(0))}${str.substring(1)}"
 
   private def uppercaseFirstLetter(str: String): String =
-    s"${Character.toUpperCase(str.charAt(0))}${str.substring(1)}"
+    if (str.isEmpty) "" else s"${Character.toUpperCase(str.charAt(0))}${str.substring(1)}"
 
   private def toPlainFieldDescriptorProto(
       required: List[String],
@@ -222,6 +227,7 @@ package object protobuf {
       case BasicSchema.DateSchema     => ??? // TODO what to use?
       case BasicSchema.DateTimeSchema => ??? // TODO what to use?
       case BasicSchema.PasswordSchema => StringProto
+      case BasicSchema.UUIDSchema     => StringProto
       case BasicSchema.StringSchema   => StringProto
     }
     List(

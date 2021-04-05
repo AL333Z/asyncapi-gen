@@ -87,7 +87,7 @@ object schema {
     final case class RefSchema(ref: Reference)                                             extends Schema
     final case class SumSchema(oneOf: List[Schema])                                        extends Schema
     final case class ObjectSchema(required: List[String], properties: Map[String, Schema]) extends Schema
-    final case class ArraySchema(items: List[Schema])                                      extends Schema
+    final case class ArraySchema(items: Schema)                                            extends Schema
     final case class EnumSchema(enum: List[String])                                        extends Schema
 
     sealed abstract class BasicSchema extends Schema
@@ -102,6 +102,7 @@ object schema {
       final case object DateSchema     extends BasicSchema
       final case object DateTimeSchema extends BasicSchema
       final case object PasswordSchema extends BasicSchema
+      final case object UUIDSchema     extends BasicSchema
       final case object StringSchema   extends BasicSchema
     }
   }
@@ -141,8 +142,7 @@ object schema {
   private val arraySchemaDecoder: Decoder[ArraySchema] =
     Decoder.instance { c =>
       for {
-        items <- c.downField("items").as[List[Schema]]
-        _     <- validateType(c, "array")
+        items <- c.downField("items").as[Schema]
       } yield ArraySchema(items)
     }
 
@@ -168,6 +168,7 @@ object schema {
       case ("string", Some("date"))      => DateSchema.asRight
       case ("string", Some("date-time")) => DateTimeSchema.asRight
       case ("string", Some("password"))  => PasswordSchema.asRight
+      case ("string", Some("uuid"))      => UUIDSchema.asRight
       case ("string", _)                 => StringSchema.asRight
       case (x, _)                        => s"$x is not well formed type".asLeft
     }
