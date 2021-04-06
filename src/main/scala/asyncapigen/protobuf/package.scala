@@ -44,7 +44,7 @@ package object protobuf {
       .traverse { case (name, item) =>
         item.subscribe.toList
           .appendedAll(item.publish.toList)
-          .flatTraverse(op => extractMessages(asyncApi, name, op.message).map(_.toList))
+          .flatTraverse(op => extractMessages(asyncApi, name, op.message, isRepeated = false).map(_.toList))
           .map(messages =>
             FileDescriptorProto(
               name = name.split('/').last, // TODO what to use?
@@ -59,14 +59,15 @@ package object protobuf {
   private def extractMessages(
       asyncApi: AsyncApi,
       name: String,
-      message: Option[Either[Message, Reference]]
+      message: Option[Either[Message, Reference]],
+      isRepeated: Boolean
   ): Try[Option[MessageDescriptorProto]] =
     message match {
       case Some(Left(message)) =>
         message.payload match {
           case Left(schema) =>
             val messageName = message.name.getOrElse(name.split('/').last.capitalize) // TODO what to put here?
-            extractMessageComponents(asyncApi, schema).map(components =>
+            extractMessageComponents(asyncApi, schema, isRepeated).map(components =>
               Some(
                 MessageDescriptorProto(
                   name = messageName,
@@ -77,77 +78,100 @@ package object protobuf {
                 )
               )
             )
-          case Right(ref) => resolveMessageDescriptorProtoFromRef(asyncApi, ref)
+          case Right(ref) => resolveMessageDescriptorProtoFromRef(asyncApi, ref, isRepeated)
         }
-      case Some(Right(ref)) => resolveMessageDescriptorProtoFromRef(asyncApi, ref)
+      case Some(Right(ref)) => resolveMessageDescriptorProtoFromRef(asyncApi, ref, isRepeated)
       case _                => Success(None)
     }
 
   private def resolveMessageDescriptorProtoFromRef(
       asyncApi: AsyncApi,
-      ref: Reference
+      ref: Reference,
+      isRepeated: Boolean
   ): Try[Option[MessageDescriptorProto]] = {
     // TODO this is a strong and wrong assumption. Refs should be fully supported!
     val messageName = ref.value.split("#/components/messages/")(1)
     val message     = asyncApi.components.flatMap(_.messages.get(messageName))
-    extractMessages(asyncApi, messageName, message)
+    extractMessages(asyncApi, messageName, message, isRepeated)
   }
 
   private def extractMessageComponents(
       asyncApi: AsyncApi,
-      schema: Schema
+      schema: Schema,
+      isRepeated: Boolean
   ): Try[MessageComponents] =
     schema match {
-      case Schema.RefSchema(_)                       => ???
-      case Schema.SumSchema(_)                       => ???
-      case Schema.ObjectSchema(required, properties) => extractFromObjectSchema(asyncApi, required, properties)
-      case Schema.ArraySchema(_)                     => ???
-      case Schema.EnumSchema(_)                      => ???
-      case _: Schema.BasicSchema                     => ???
+      case Schema.RefSchema(_) => ???
+      case Schema.SumSchema(_) => ???
+      case Schema.ObjectSchema(required, properties) =>
+        extractFromObjectSchema(asyncApi, required, properties, isRepeated)
+      case Schema.ArraySchema(_) => ???
+      case Schema.EnumSchema(_)  => ???
+      case _: Schema.BasicSchema => ???
     }
 
   private def extractFromObjectSchema(
       asyncApi: AsyncApi,
       required: List[String],
-      properties: Map[String, Schema]
+      properties: Map[String, Schema],
+      isRep: Boolean
   ): Try[MessageComponents] = {
-    def go(acc: MessageComponents, fieldName: String, v: Schema, i: Int): Try[MessageComponents] = {
-      v match {
-        case Schema.RefSchema(ref) =>
-          resolveMessageDescriptorProtoFromRef(asyncApi, ref)
-            .map(_.toList.flatMap(_.fields))
-            .map(acc.appendFields)
-        case Schema.SumSchema(oneOfs) => // TODO indexes!
-          val oneofDescriptorProto = toOneofDescriptorProto(asyncApi, required, fieldName, oneOfs.zipWithIndex)
-          Success(acc.combine(oneofDescriptorProto))
-        case Schema.ObjectSchema(required, properties) =>
-          extractFromObjectSchema(asyncApi, required, properties).map(acc.combine)
-        case Schema.ArraySchema(schema) =>
-          go(acc, fieldName, schema, i).map(components => components.copy(fields = components.fields.map(_.repeated)))
-        case Schema.EnumSchema(enum) =>
-          val enumTypeName = uppercaseFirstLetter(fieldName)
-          Try(NonEmptyList.fromListUnsafe(enum.zipWithIndex))
-            .map(enumValues =>
-              acc
-                .appendField(
-                  PlainFieldDescriptorProto(
-                    name = fieldName,
-                    `type` = NamedTypeProto(enumTypeName),
-                    label = toFieldDescriptorProtoLabel(required, fieldName),
-                    options = Nil,
-                    index = i + 1 // TODO how to handle indexes?
-                  )
-                )
-                .appendEnum(EnumDescriptorProto(enumTypeName, enumValues))
+    def go(
+        acc: MessageComponents,
+        fieldName: String,
+        v: Schema,
+        i: Int,
+        isRepeated: Boolean
+    ): Try[MessageComponents] = v match {
+      case Schema.RefSchema(ref) =>
+        resolveMessageDescriptorProtoFromRef(asyncApi, ref, isRepeated)
+          .map(
+            _.toList.map(message =>
+              PlainFieldDescriptorProto(
+                name = fieldName,
+                `type` = NamedTypeProto(message.name),
+                label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated),
+                options = Nil,
+                index = i + 1, // TODO how to handle indexes?
+                messageProto = Some(message)
+              )
             )
-        case bs: BasicSchema =>
-          Success(acc.appendFields(toPlainFieldDescriptorProto(required, fieldName, i, bs)))
-      }
+          )
+          .map(xs =>
+            acc.combine(
+              MessageComponents(xs, Nil, xs.collect { case x if x.messageProto.isDefined => x.messageProto.get })
+            )
+          )
+      case Schema.SumSchema(oneOfs) => // TODO indexes!
+        val oneofDescriptorProto = toOneofDescriptorProto(asyncApi, required, fieldName, oneOfs.zipWithIndex)
+        Success(acc.combine(oneofDescriptorProto))
+      case Schema.ObjectSchema(required, properties) =>
+        extractFromObjectSchema(asyncApi, required, properties, isRepeated).map(acc.combine)
+      case Schema.ArraySchema(schema) =>
+        go(acc, fieldName, schema, i, isRepeated = true)
+      case Schema.EnumSchema(enum) =>
+        val enumTypeName = uppercaseFirstLetter(fieldName)
+        Try(NonEmptyList.fromListUnsafe(enum.zipWithIndex))
+          .map(enumValues =>
+            acc
+              .appendField(
+                PlainFieldDescriptorProto(
+                  name = fieldName,
+                  `type` = NamedTypeProto(enumTypeName),
+                  label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated),
+                  options = Nil,
+                  index = i + 1 // TODO how to handle indexes?
+                )
+              )
+              .appendEnum(EnumDescriptorProto(enumTypeName, enumValues))
+          )
+      case bs: BasicSchema =>
+        Success(acc.appendFields(toPlainFieldDescriptorProto(required, fieldName, i, bs, isRepeated)))
     }
 
     properties.zipWithIndex.toList // TODO understand how to keep track of field indexes
       .foldLeftM[Try, MessageComponents](Monoid[MessageComponents].empty) { case (acc, ((fieldName, v), i)) =>
-        go(acc, fieldName, v, i)
+        go(acc, fieldName, v, i, isRepeated = isRep)
       }
   }
 
@@ -160,11 +184,11 @@ package object protobuf {
     val fields: List[Either[PlainFieldDescriptorProto, EnumFieldDescriptorProto]] = oneOfs.flatMap { case (s, i) =>
       s match {
         case Schema.RefSchema(ref) =>
-          resolveMessageDescriptorProtoFromRef(asyncApi, ref).toOption.flatten.toList.map(message =>
+          resolveMessageDescriptorProtoFromRef(asyncApi, ref, isRepeated = false).toOption.flatten.toList.map(message =>
             PlainFieldDescriptorProto(
               name = lowercaseFirstLetter(message.name),
               `type` = NamedTypeProto(message.name),
-              label = toFieldDescriptorProtoLabel(required, fieldName),
+              label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated = false),
               options = Nil,
               index = i + 1, // TODO how to handle indexes?
               messageProto = Some(message)
@@ -181,12 +205,12 @@ package object protobuf {
                 name = fieldName,
                 symbols = NonEmptyList.fromListUnsafe(enum.zipWithIndex)
               ),
-              label = toFieldDescriptorProtoLabel(required, fieldName),
+              label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated = false),
               index = i
             ).asRight
           )
         case schema: BasicSchema =>
-          toPlainFieldDescriptorProto(required, fieldName, i, schema).map(_.asLeft)
+          toPlainFieldDescriptorProto(required, fieldName, i, schema, isRepeated = false).map(_.asLeft)
       }
     }
 
@@ -194,7 +218,7 @@ package object protobuf {
       fields = List(
         OneofDescriptorProto(
           name = fieldName,
-          label = toFieldDescriptorProtoLabel(required, fieldName),
+          label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated = false),
           fields = fields
         )
       ),
@@ -214,7 +238,8 @@ package object protobuf {
       required: List[String],
       fieldName: String,
       i: Int,
-      bs: BasicSchema
+      bs: BasicSchema,
+      isRepeated: Boolean
   ): List[PlainFieldDescriptorProto] = {
     val pbType = bs match {
       case BasicSchema.IntegerSchema  => Int32Proto
@@ -234,14 +259,20 @@ package object protobuf {
       PlainFieldDescriptorProto(
         name = fieldName,
         `type` = pbType,
-        label = toFieldDescriptorProtoLabel(required, fieldName),
+        label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated),
         options = Nil,
         index = i + 1 // TODO how to handle indexes?
       )
     )
   }
 
-  private def toFieldDescriptorProtoLabel(required: List[String], fieldName: String): FieldDescriptorProtoLabel =
-    if (required.contains(fieldName)) FieldDescriptorProtoLabel.Required
+  private def toFieldDescriptorProtoLabel(
+      required: List[String],
+      fieldName: String,
+      isRepeated: Boolean
+  ): FieldDescriptorProtoLabel = {
+    if (isRepeated) FieldDescriptorProtoLabel.Repeated
+    else if (required.contains(fieldName)) FieldDescriptorProtoLabel.Required
     else FieldDescriptorProtoLabel.Optional
+  }
 }

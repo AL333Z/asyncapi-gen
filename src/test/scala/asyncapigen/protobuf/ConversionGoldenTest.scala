@@ -215,14 +215,21 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |              items:
          |                type: string
          |                format: uuid
-         |
+         |            stuffs:
+         |              type: array
+         |              items:
+         |                $$ref: '#/components/messages/Item'
+         |            myEnums:
+         |              type: array
+         |              items:
+         |                type: string
+         |                enum: [ bar, foo ]
+         |components:
+         |  messages:
+         |    Item:
+         |      payload:
+         |        type: object
          |""".stripMargin
-    //         |            things:
-    //         |              type: array
-    //         |              items:
-    //         |                anyOf:
-    //         |                  - $$ref: '#/components/schemas/ItemOne'
-    //         |                  - $$ref: '#/components/schemas/ItemTwo'
 
     val expectedProtobufs = List(
       s"""
@@ -230,6 +237,13 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |
          |message UserSignedUp {
          |  repeated string strings = 1;
+         |  repeated Item stuffs = 2;
+         |  repeated MyEnums myEnums = 3;
+         |  message Item {}
+         |  enum MyEnums {
+         |    bar = 0;
+         |    foo = 1;
+         |  }
          |}
          |""".stripMargin
     )

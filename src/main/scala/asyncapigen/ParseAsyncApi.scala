@@ -19,10 +19,9 @@ package asyncapigen
 import asyncapigen.schema._
 import cats.effect.{Resource, Sync}
 import cats.implicits._
-import io.circe.{CursorOp, Decoder}
+import io.circe.Decoder
 
 import java.io.File
-import scala.Console.println
 
 object ParseAsyncApi {
 
@@ -39,10 +38,7 @@ object ParseAsyncApi {
         .leftMap(_.asLeft)
         .flatMap(Decoder[AsyncApi].decodeJson(_).leftMap(_.asRight))
         .left
-        .map { x =>
-          x.map(d => println(s"${d.message} ${CursorOp.opsToPath(d.history)}"))
-          x.valueOr(identity)
-        }
+        .map(_.valueOr(identity))
     )
   }
 
