@@ -249,8 +249,8 @@ package object protobuf {
       case BasicSchema.ByteSchema     => BytesProto
       case BasicSchema.BinarySchema   => Int32Proto
       case BasicSchema.BooleanSchema  => BoolProto
-      case BasicSchema.DateSchema     => ??? // TODO what to use?
-      case BasicSchema.DateTimeSchema => ??? // TODO what to use?
+      case BasicSchema.DateSchema     => StringProto // google/protobuf/timestamp.proto instead?
+      case BasicSchema.DateTimeSchema => StringProto // google/protobuf/timestamp.proto instead?
       case BasicSchema.PasswordSchema => StringProto
       case BasicSchema.UUIDSchema     => StringProto
       case BasicSchema.StringSchema   => StringProto
