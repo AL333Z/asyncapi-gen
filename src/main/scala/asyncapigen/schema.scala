@@ -1,10 +1,13 @@
 package asyncapigen
 
 import asyncapigen.schema.Schema.BasicSchema._
-import asyncapigen.schema.Schema.{ObjectSchema, _}
+import asyncapigen.schema.Schema.{BasicSchemaValue, ObjectSchema, _}
 import cats.implicits._
 import cats.kernel.Eq
 import io.circe._
+
+import java.time.{LocalDate, LocalDateTime}
+import java.util.UUID
 
 /**
  * @see https://www.asyncapi.com/docs/specifications/2.0.0
@@ -91,14 +94,18 @@ object schema {
     final case class SumSchema(oneOf: List[SumSchema.Elem])                                           extends Schema
 
     object ObjectSchema {
-      final case class Elem(schema: Schema, customFields: Map[String, BasicSchema] = Map.empty)
+      final case class Elem(schema: Schema, customFields: Map[String, BasicSchemaValue] = Map.empty)
     }
 
     object SumSchema {
-      final case class Elem(schema: Schema, name: Option[String], customFields: Map[String, BasicSchema] = Map.empty)
+      final case class Elem(
+          schema: Schema,
+          name: Option[String],
+          customFields: Map[String, BasicSchemaValue] = Map.empty
+      )
     }
 
-    sealed abstract class BasicSchema extends Schema
+    sealed abstract class BasicSchema extends Schema with Product with Serializable
     object BasicSchema {
       final case object IntegerSchema  extends BasicSchema
       final case object LongSchema     extends BasicSchema
@@ -113,6 +120,22 @@ object schema {
       final case object UUIDSchema     extends BasicSchema
       final case object StringSchema   extends BasicSchema
     }
+
+    sealed abstract class BasicSchemaValue extends Product with Serializable
+    object BasicSchemaValue {
+      final case class IntegerValue(value: Int)            extends BasicSchemaValue
+      final case class LongValue(value: Long)              extends BasicSchemaValue
+      final case class FloatValue(value: Float)            extends BasicSchemaValue
+      final case class DoubleValue(value: Double)          extends BasicSchemaValue
+      final case class ByteValue(value: Byte)              extends BasicSchemaValue
+      final case class BinaryValue(value: Array[Byte])     extends BasicSchemaValue
+      final case class BooleanValue(value: Boolean)        extends BasicSchemaValue
+      final case class DateValue(value: LocalDate)         extends BasicSchemaValue
+      final case class DateTimeValue(value: LocalDateTime) extends BasicSchemaValue
+      final case class PasswordValue(value: String)        extends BasicSchemaValue
+      final case class UUIDValue(value: UUID)              extends BasicSchemaValue
+      final case class StringValue(value: String)          extends BasicSchemaValue
+    }
   }
 
   implicit val referenceDecoder: Decoder[Reference] = Decoder.forProduct1(s"$$ref")(Reference.apply)
@@ -120,8 +143,29 @@ object schema {
   private val refSchemaDecoder: Decoder[RefSchema] =
     Decoder[Reference].map(RefSchema)
 
-  private val customFieldsDecoder: Decoder[Map[String, BasicSchema]] = Decoder
-    .decodeOption(Decoder.decodeMap[String, BasicSchema](KeyDecoder.decodeKeyString, basicSchemaDecoder))
+  private val customFieldsDecoder: Decoder[Map[String, BasicSchemaValue]] = Decoder
+    .decodeOption(
+      Decoder.decodeMap[String, BasicSchemaValue](
+        KeyDecoder.decodeKeyString,
+        basicSchemaDecoder.flatMap[BasicSchemaValue] { basicSchema =>
+          val basicSchemaValueDecoder: Decoder[BasicSchemaValue] = basicSchema match {
+            case BasicSchema.IntegerSchema  => Decoder.decodeInt.map(BasicSchemaValue.IntegerValue)
+            case BasicSchema.LongSchema     => Decoder.decodeLong.map(BasicSchemaValue.LongValue)
+            case BasicSchema.FloatSchema    => Decoder.decodeFloat.map(BasicSchemaValue.FloatValue)
+            case BasicSchema.DoubleSchema   => Decoder.decodeDouble.map(BasicSchemaValue.DoubleValue)
+            case BasicSchema.ByteSchema     => Decoder.decodeByte.map(BasicSchemaValue.ByteValue)
+            case BasicSchema.BinarySchema   => Decoder.decodeArray[Byte].map(BasicSchemaValue.BinaryValue)
+            case BasicSchema.BooleanSchema  => Decoder.decodeBoolean.map(BasicSchemaValue.BooleanValue)
+            case BasicSchema.DateSchema     => Decoder.decodeLocalDate.map(BasicSchemaValue.DateValue)
+            case BasicSchema.DateTimeSchema => Decoder.decodeLocalDateTime.map(BasicSchemaValue.DateTimeValue)
+            case BasicSchema.PasswordSchema => Decoder.decodeString.map(BasicSchemaValue.StringValue)
+            case BasicSchema.UUIDSchema     => Decoder.decodeUUID.map(BasicSchemaValue.UUIDValue)
+            case BasicSchema.StringSchema   => Decoder.decodeString.map(BasicSchemaValue.StringValue)
+          }
+          basicSchemaValueDecoder.at("value")
+        }
+      )
+    )
     .map(_.getOrElse(Map.empty))
     .at("x-custom-fields")
 
