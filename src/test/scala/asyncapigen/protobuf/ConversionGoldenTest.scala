@@ -28,10 +28,18 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |            displayName:
          |              type: string
          |              description: Name of the user
+         |              x-custom-fields:
+         |                x-proto-index:
+         |                  type: integer
+         |                  value: 2
          |            email:
          |              type: string
          |              format: email
          |              description: Email of the user
+         |              x-custom-fields:
+         |                x-proto-index:
+         |                  type: integer
+         |                  value: 3
          |""".stripMargin
 
     val expectedProtobufs = List(
@@ -39,8 +47,8 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |syntax = "proto3";
          |
          |message UserSignedUp {
-         |  optional string displayName = 1;
-         |  string email = 2;
+         |  optional string displayName = 2;
+         |  string email = 3;
          |}
          |""".stripMargin
     )
@@ -75,7 +83,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |            x-custom-fields:
          |              x-proto-index:
          |                type: integer
-         |                value: 0
+         |                value: 2
          |          email:
          |            type: string
          |            format: email
@@ -83,7 +91,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |            x-custom-fields:
          |              x-proto-index:
          |                type: integer
-         |                value: 1
+         |                value: 3
          |""".stripMargin
 
     val expectedProtobufs = List(
@@ -91,8 +99,8 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |syntax = "proto3";
          |
          |message UserSignedUp {
-         |  optional string displayName = 1;
-         |  string email = 2;
+         |  optional string displayName = 2;
+         |  string email = 3;
          |}
          |""".stripMargin
     )
@@ -127,15 +135,31 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |            type: string
          |            format: uuid
          |            description: The message identifier
+         |            x-custom-fields:
+         |              x-proto-index:
+         |                type: integer
+         |                value: 1
          |          documentType:
          |            type: string
          |            description: Type of the document
+         |            x-custom-fields:
+         |              x-proto-index:
+         |                type: integer
+         |                value: 2
          |          eventType:
          |            oneOf:
          |              - type: string
          |                name: StringEventType
+         |                x-custom-fields:
+         |                  x-proto-index:
+         |                    type: integer
+         |                    value: 3
          |              - type: integer
          |                name: IntEventType
+         |                x-custom-fields:
+         |                  x-proto-index:
+         |                    type: integer
+         |                    value: 4
          |""".stripMargin
 
     // FIXME the indexes in the oneof are wrong, adjust the test once we add support for those!
@@ -147,8 +171,8 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |  string id = 1;
          |  string documentType = 2;
          |  oneof eventType {
-         |    string stringEventType = 1;
-         |    int32 intEventType = 2;
+         |    string stringEventType = 3;
+         |    int32 intEventType = 4;
          |  }
          |}
          |""".stripMargin
@@ -184,13 +208,29 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |            type: string
          |            format: uuid
          |            description: The message identifier
+         |            x-custom-fields:
+         |              x-proto-index:
+         |                type: integer
+         |                value: 1
          |          documentType:
          |            type: string
          |            description: Type of the document
+         |            x-custom-fields:
+         |              x-proto-index:
+         |                type: integer
+         |                value: 2
          |          eventType:
          |            oneOf:
          |              - $$ref: '#/components/messages/DocumentCreatedEvent'
+         |                x-custom-fields:
+         |                  x-proto-index:
+         |                    type: integer
+         |                    value: 3
          |              - $$ref: '#/components/messages/DocumentSignedEvent'
+         |                x-custom-fields:
+         |                  x-proto-index:
+         |                    type: integer
+         |                    value: 4
          |    DocumentCreatedEvent:
          |      payload:
          |        type: object
@@ -209,8 +249,8 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |  string id = 1;
          |  string documentType = 2;
          |  oneof eventType {
-         |    DocumentCreatedEvent documentCreatedEvent = 1;
-         |    DocumentSignedEvent documentSignedEvent = 2;
+         |    DocumentCreatedEvent documentCreatedEvent = 3;
+         |    DocumentSignedEvent documentSignedEvent = 4;
          |  }
          |  message DocumentCreatedEvent {}
          |  message DocumentSignedEvent {}
@@ -240,6 +280,10 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |            myEnum:
          |              type: string
          |              enum: [ bar, foo ]
+         |              x-custom-fields:
+         |                x-proto-index:
+         |                  type: integer
+         |                  value: 2
          |""".stripMargin
 
     val expectedProtobufs = List(
@@ -247,7 +291,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |syntax = "proto3";
          |
          |message UserSignedUp {
-         |  optional MyEnum myEnum = 1;
+         |  optional MyEnum myEnum = 2;
          |  enum MyEnum {
          |    bar = 0;
          |    foo = 1;
@@ -280,15 +324,27 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |              items:
          |                type: string
          |                format: uuid
+         |              x-custom-fields:
+         |                x-proto-index:
+         |                  type: integer
+         |                  value: 2
          |            stuffs:
          |              type: array
          |              items:
          |                $$ref: '#/components/messages/Item'
+         |              x-custom-fields:
+         |                x-proto-index:
+         |                  type: integer
+         |                  value: 3
          |            myEnums:
          |              type: array
          |              items:
          |                type: string
          |                enum: [ bar, foo ]
+         |              x-custom-fields:
+         |                x-proto-index:
+         |                  type: integer
+         |                  value: 4
          |components:
          |  messages:
          |    Item:
@@ -301,9 +357,9 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |syntax = "proto3";
          |
          |message UserSignedUp {
-         |  repeated string strings = 1;
-         |  repeated Item stuffs = 2;
-         |  repeated MyEnums myEnums = 3;
+         |  repeated string strings = 2;
+         |  repeated Item stuffs = 3;
+         |  repeated MyEnums myEnums = 4;
          |  message Item {}
          |  enum MyEnums {
          |    bar = 0;
