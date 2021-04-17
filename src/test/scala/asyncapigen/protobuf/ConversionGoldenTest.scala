@@ -72,10 +72,18 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |          displayName:
          |            type: string
          |            description: Name of the user
+         |            x-custom-fields:
+         |              x-proto-index:
+         |                type: integer
+         |                value: 0
          |          email:
          |            type: string
          |            format: email
          |            description: Email of the user
+         |            x-custom-fields:
+         |              x-proto-index:
+         |                type: integer
+         |                value: 1
          |""".stripMargin
 
     val expectedProtobufs = List(

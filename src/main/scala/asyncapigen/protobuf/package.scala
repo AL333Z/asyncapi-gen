@@ -7,12 +7,13 @@ import asyncapigen.protobuf.schema.FieldDescriptorProto.{
 }
 import asyncapigen.protobuf.schema.FieldProtoType._
 import asyncapigen.protobuf.schema._
-import asyncapigen.schema.Schema.{BasicSchema, SumSchema}
+import asyncapigen.schema.Schema.{BasicSchema, ObjectSchema, SumSchema}
 import asyncapigen.schema.{AsyncApi, Message, Reference, Schema}
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.kernel.Monoid
 
+import scala.annotation.tailrec
 import scala.util.{Success, Try}
 
 private case class MessageComponents(
@@ -113,9 +114,10 @@ package object protobuf {
   private def extractFromObjectSchema(
       asyncApi: AsyncApi,
       required: List[String],
-      properties: Map[String, Schema],
+      properties: Map[String, ObjectSchema.Elem],
       isRep: Boolean
   ): Try[MessageComponents] = {
+    @tailrec
     def go(
         acc: MessageComponents,
         fieldName: String,
@@ -171,7 +173,7 @@ package object protobuf {
 
     properties.zipWithIndex.toList // TODO understand how to keep track of field indexes
       .foldLeftM[Try, MessageComponents](Monoid[MessageComponents].empty) { case (acc, ((fieldName, v), i)) =>
-        go(acc, fieldName, v, i, isRepeated = isRep)
+        go(acc, fieldName, v.schema, i, isRepeated = isRep)
       }
   }
 
@@ -182,7 +184,7 @@ package object protobuf {
       oneOfs: List[(SumSchema.Elem, Int)]
   ): MessageComponents = { // TODO maybe this should be a Try?
     val fields: List[Either[PlainFieldDescriptorProto, EnumFieldDescriptorProto]] = oneOfs.flatMap {
-      case (SumSchema.Elem(maybeName, s), i) =>
+      case (SumSchema.Elem(s, maybeName, _), i) =>
         val name = lowercaseFirstLetter(maybeName.getOrElse(fieldName))
         s match {
           case Schema.RefSchema(ref) =>

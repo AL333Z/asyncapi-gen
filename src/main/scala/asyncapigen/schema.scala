@@ -1,7 +1,7 @@
 package asyncapigen
 
 import asyncapigen.schema.Schema.BasicSchema._
-import asyncapigen.schema.Schema._
+import asyncapigen.schema.Schema.{ObjectSchema, _}
 import cats.implicits._
 import cats.kernel.Eq
 import io.circe._
@@ -84,13 +84,18 @@ object schema {
   sealed abstract class Schema extends Product with Serializable
 
   object Schema {
-    final case class RefSchema(ref: Reference)                                             extends Schema
-    final case class ObjectSchema(required: List[String], properties: Map[String, Schema]) extends Schema
-    final case class ArraySchema(items: Schema)                                            extends Schema
-    final case class EnumSchema(enum: List[String])                                        extends Schema
-    final case class SumSchema(oneOf: List[SumSchema.Elem])                                extends Schema
+    final case class RefSchema(ref: Reference)                                                        extends Schema
+    final case class ObjectSchema(required: List[String], properties: Map[String, ObjectSchema.Elem]) extends Schema
+    final case class ArraySchema(items: Schema)                                                       extends Schema
+    final case class EnumSchema(enum: List[String])                                                   extends Schema
+    final case class SumSchema(oneOf: List[SumSchema.Elem])                                           extends Schema
+
+    object ObjectSchema {
+      final case class Elem(schema: Schema, customFields: Map[String, BasicSchema] = Map.empty)
+    }
+
     object SumSchema {
-      final case class Elem(name: Option[String], schema: Schema)
+      final case class Elem(schema: Schema, name: Option[String], customFields: Map[String, BasicSchema] = Map.empty)
     }
 
     sealed abstract class BasicSchema extends Schema
@@ -115,11 +120,19 @@ object schema {
   private val refSchemaDecoder: Decoder[RefSchema] =
     Decoder[Reference].map(RefSchema)
 
+  private val customFieldsDecoder: Decoder[Map[String, BasicSchema]] = Decoder
+    .decodeOption(Decoder.decodeMap[String, BasicSchema](KeyDecoder.decodeKeyString, basicSchemaDecoder))
+    .map(_.getOrElse(Map.empty))
+    .at("x-custom-fields")
+
   implicit val sumSchemaElemDecoder: Decoder[SumSchema.Elem] =
-    (Decoder[Option[String]].at("name"), Decoder[Schema]).mapN(SumSchema.Elem)
+    (Decoder[Schema], Decoder[Option[String]].at("name"), customFieldsDecoder).mapN(SumSchema.Elem.apply)
 
   private val sumSchemaDecoder: Decoder[SumSchema] =
     Decoder.instance(_.downField("oneOf").as[List[SumSchema.Elem]].map(SumSchema.apply))
+
+  implicit val objectSchemaElemDecoder: Decoder[ObjectSchema.Elem] =
+    (schemaDecoder, customFieldsDecoder).mapN(ObjectSchema.Elem)
 
   private val objectSchemaDecoder: Decoder[ObjectSchema] =
     Decoder.instance { c =>
@@ -138,8 +151,10 @@ object schema {
         required <- c.downField("required").as[Option[List[String]]]
         properties <-
           c.downField("properties")
-            .as[Option[Map[String, Schema]]](
-              Decoder.decodeOption(Decoder.decodeMap[String, Schema](KeyDecoder.decodeKeyString, schemaDecoder))
+            .as[Option[Map[String, ObjectSchema.Elem]]](
+              Decoder.decodeOption(
+                Decoder.decodeMap[String, ObjectSchema.Elem](KeyDecoder.decodeKeyString, objectSchemaElemDecoder)
+              )
             )
             .map(_.getOrElse(Map.empty))
       } yield ObjectSchema(required.getOrElse(List.empty), properties)
@@ -160,7 +175,7 @@ object schema {
       } yield EnumSchema(values)
     )
 
-  private val basicSchemaDecoder: Decoder[BasicSchema] =
+  private def basicSchemaDecoder: Decoder[BasicSchema] =
     Decoder.forProduct2[(String, Option[String]), String, Option[String]]("type", "format")(Tuple2.apply).emap {
       case ("integer", Some("int32"))    => IntegerSchema.asRight
       case ("integer", Some("int64"))    => LongSchema.asRight
