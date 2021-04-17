@@ -7,7 +7,7 @@ import asyncapigen.protobuf.schema.FieldDescriptorProto.{
 }
 import asyncapigen.protobuf.schema.FieldProtoType._
 import asyncapigen.protobuf.schema._
-import asyncapigen.schema.Schema.BasicSchema
+import asyncapigen.schema.Schema.{BasicSchema, SumSchema}
 import asyncapigen.schema.{AsyncApi, Message, Reference, Schema}
 import cats.data.NonEmptyList
 import cats.implicits._
@@ -179,10 +179,10 @@ package object protobuf {
       asyncApi: AsyncApi,
       required: List[String],
       fieldName: String,
-      oneOfs: List[((Option[String], Schema), Int)]
+      oneOfs: List[(SumSchema.Elem, Int)]
   ): MessageComponents = { // TODO maybe this should be a Try?
     val fields: List[Either[PlainFieldDescriptorProto, EnumFieldDescriptorProto]] = oneOfs.flatMap {
-      case ((maybeName, s), i) =>
+      case (SumSchema.Elem(maybeName, s), i) =>
         val name = lowercaseFirstLetter(maybeName.getOrElse(fieldName))
         s match {
           case Schema.RefSchema(ref) =>

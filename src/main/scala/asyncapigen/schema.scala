@@ -85,10 +85,13 @@ object schema {
 
   object Schema {
     final case class RefSchema(ref: Reference)                                             extends Schema
-    final case class SumSchema(oneOf: List[(Option[String], Schema)])                      extends Schema
     final case class ObjectSchema(required: List[String], properties: Map[String, Schema]) extends Schema
     final case class ArraySchema(items: Schema)                                            extends Schema
     final case class EnumSchema(enum: List[String])                                        extends Schema
+    final case class SumSchema(oneOf: List[SumSchema.Elem])                                extends Schema
+    object SumSchema {
+      final case class Elem(name: Option[String], schema: Schema)
+    }
 
     sealed abstract class BasicSchema extends Schema
     object BasicSchema {
@@ -112,11 +115,11 @@ object schema {
   private val refSchemaDecoder: Decoder[RefSchema] =
     Decoder[Reference].map(RefSchema)
 
-  implicit val sumSchemaElemDecoder: Decoder[(Option[String], Schema)] =
-    (Decoder[Option[String]].at("name"), Decoder[Schema]).tupled
+  implicit val sumSchemaElemDecoder: Decoder[SumSchema.Elem] =
+    (Decoder[Option[String]].at("name"), Decoder[Schema]).mapN(SumSchema.Elem)
 
   private val sumSchemaDecoder: Decoder[SumSchema] =
-    Decoder.instance(_.downField("oneOf").as[List[(Option[String], Schema)]].map(SumSchema))
+    Decoder.instance(_.downField("oneOf").as[List[SumSchema.Elem]].map(SumSchema.apply))
 
   private val objectSchemaDecoder: Decoder[ObjectSchema] =
     Decoder.instance { c =>
