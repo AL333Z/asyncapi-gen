@@ -130,7 +130,7 @@ package object protobuf {
               PlainFieldDescriptorProto(
                 name = fieldName,
                 `type` = NamedTypeProto(message.name),
-                label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated),
+                label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated),
                 options = Nil,
                 index = i + 1, // TODO how to handle indexes?
                 messageProto = Some(message)
@@ -158,7 +158,7 @@ package object protobuf {
                 PlainFieldDescriptorProto(
                   name = fieldName,
                   `type` = NamedTypeProto(enumTypeName),
-                  label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated),
+                  label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated),
                   options = Nil,
                   index = i + 1 // TODO how to handle indexes?
                 )
@@ -166,7 +166,7 @@ package object protobuf {
               .appendEnum(EnumDescriptorProto(enumTypeName, enumValues))
           )
       case bs: BasicSchema =>
-        Success(acc.appendFields(toPlainFieldDescriptorProto(required, fieldName, i, bs, isRepeated)))
+        Success(acc.appendFields(toPlainFieldDescriptorProto(Some(required), fieldName, i, bs, isRepeated)))
     }
 
     properties.zipWithIndex.toList // TODO understand how to keep track of field indexes
@@ -179,53 +179,55 @@ package object protobuf {
       asyncApi: AsyncApi,
       required: List[String],
       fieldName: String,
-      oneOfs: List[(Schema, Int)]
+      oneOfs: List[((Option[String], Schema), Int)]
   ): MessageComponents = { // TODO maybe this should be a Try?
-    val fields: List[Either[PlainFieldDescriptorProto, EnumFieldDescriptorProto]] = oneOfs.flatMap { case (s, i) =>
-      s match {
-        case Schema.RefSchema(ref) =>
-          resolveMessageDescriptorProtoFromRef(asyncApi, ref, isRepeated = false).toOption.flatten.toList.map(message =>
-            PlainFieldDescriptorProto(
-              name = lowercaseFirstLetter(message.name),
-              `type` = NamedTypeProto(message.name),
-              label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated = false),
-              options = Nil,
-              index = i + 1, // TODO how to handle indexes?
-              messageProto = Some(message)
-            ).asLeft
-          )
-        case Schema.SumSchema(_)       => ??? // TODO not supported in protobuf?
-        case Schema.ObjectSchema(_, _) => ??? // TODO not supported in protobuf?
-        case Schema.ArraySchema(_)     => ??? // TODO not supported in protobuf?
-        case Schema.EnumSchema(enum) =>
-          List(
-            EnumFieldDescriptorProto(
-              name = fieldName,
-              enum = EnumDescriptorProto(
-                name = fieldName,
-                symbols = NonEmptyList.fromListUnsafe(enum.zipWithIndex)
-              ),
-              label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated = false),
-              index = i
-            ).asRight
-          )
-        case schema: BasicSchema =>
-          toPlainFieldDescriptorProto(required, fieldName, i, schema, isRepeated = false).map(_.asLeft)
-      }
+    val fields: List[Either[PlainFieldDescriptorProto, EnumFieldDescriptorProto]] = oneOfs.flatMap {
+      case ((maybeName, s), i) =>
+        val name = lowercaseFirstLetter(maybeName.getOrElse(fieldName))
+        s match {
+          case Schema.RefSchema(ref) =>
+            resolveMessageDescriptorProtoFromRef(asyncApi, ref, isRepeated = false).toOption.flatten.toList.map(
+              message =>
+                PlainFieldDescriptorProto(
+                  name = lowercaseFirstLetter(message.name),
+                  `type` = NamedTypeProto(message.name),
+                  label = toFieldDescriptorProtoLabel(None, fieldName, isRepeated = false),
+                  options = Nil,
+                  index = i + 1, // TODO how to handle indexes?
+                  messageProto = Some(message)
+                ).asLeft
+            )
+          case Schema.SumSchema(_)       => ??? // TODO not supported in protobuf?
+          case Schema.ObjectSchema(_, _) => ??? // TODO not supported in protobuf?
+          case Schema.ArraySchema(_)     => ??? // TODO not supported in protobuf?
+          case Schema.EnumSchema(enum) =>
+            List(
+              EnumFieldDescriptorProto(
+                name = name,
+                enum = EnumDescriptorProto(
+                  name = fieldName,
+                  symbols = NonEmptyList.fromListUnsafe(enum.zipWithIndex)
+                ),
+                label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated = false),
+                index = i
+              ).asRight
+            )
+          case schema: BasicSchema =>
+            toPlainFieldDescriptorProto(None, name, i, schema, isRepeated = false).map(_.asLeft)
+        }
     }
 
     MessageComponents(
       fields = List(
         OneofDescriptorProto(
           name = fieldName,
-          label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated = false),
+          label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated = false),
           fields = fields
         )
       ),
       enums = fields.collect { case Right(e) => e.enum },
       messages = fields.collect { case Left(x) if x.messageProto.isDefined => x.messageProto.get }
     )
-
   }
 
   private def lowercaseFirstLetter(str: String): String =
@@ -235,7 +237,7 @@ package object protobuf {
     if (str.isEmpty) "" else s"${Character.toUpperCase(str.charAt(0))}${str.substring(1)}"
 
   private def toPlainFieldDescriptorProto(
-      required: List[String],
+      required: Option[List[String]],
       fieldName: String,
       i: Int,
       bs: BasicSchema,
@@ -267,12 +269,12 @@ package object protobuf {
   }
 
   private def toFieldDescriptorProtoLabel(
-      required: List[String],
+      required: Option[List[String]],
       fieldName: String,
       isRepeated: Boolean
   ): FieldDescriptorProtoLabel = {
     if (isRepeated) FieldDescriptorProtoLabel.Repeated
-    else if (required.contains(fieldName)) FieldDescriptorProtoLabel.Required
+    else if (required.isEmpty || required.get.contains(fieldName)) FieldDescriptorProtoLabel.Required
     else FieldDescriptorProtoLabel.Optional
   }
 }

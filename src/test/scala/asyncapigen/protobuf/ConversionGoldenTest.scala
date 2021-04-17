@@ -92,6 +92,63 @@ class ConversionGoldenTest extends CatsEffectSuite {
     checkConversion(input, expectedProtobufs)
   }
 
+  test("asyncapi to protobuf - oneof with basic types") {
+    val input: String =
+      s"""
+         |asyncapi: 2.0.0
+         |info:
+         |  title: Document Service
+         |  version: 1.0.0
+         |  description: This service is in charge of processing document updates
+         |channels:
+         |  document/documentStateChange:
+         |    subscribe:
+         |      message:
+         |        $$ref: '#/components/messages/DocumentStateChange'
+         |components:
+         |  messages:
+         |    DocumentStateChange:
+         |      payload:
+         |        type: object
+         |        required:
+         |          - id
+         |          - documentType
+         |          - eventType
+         |        properties:
+         |          id:
+         |            type: string
+         |            format: uuid
+         |            description: The message identifier
+         |          documentType:
+         |            type: string
+         |            description: Type of the document
+         |          eventType:
+         |            oneOf:
+         |              - type: string
+         |                name: StringEventType
+         |              - type: integer
+         |                name: IntEventType
+         |""".stripMargin
+
+    // FIXME the indexes in the oneof are wrong, adjust the test once we add support for those!
+    val expectedProtobufs = List(
+      s"""
+         |syntax = "proto3";
+         |
+         |message DocumentStateChange {
+         |  string id = 1;
+         |  string documentType = 2;
+         |  oneof eventType {
+         |    string stringEventType = 1;
+         |    int32 intEventType = 2;
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+    checkConversion(input, expectedProtobufs)
+  }
+
   test("asyncapi to protobuf - refs and oneof") {
     val input: String =
       s"""

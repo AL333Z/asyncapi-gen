@@ -85,7 +85,7 @@ object schema {
 
   object Schema {
     final case class RefSchema(ref: Reference)                                             extends Schema
-    final case class SumSchema(oneOf: List[Schema])                                        extends Schema
+    final case class SumSchema(oneOf: List[(Option[String], Schema)])                      extends Schema
     final case class ObjectSchema(required: List[String], properties: Map[String, Schema]) extends Schema
     final case class ArraySchema(items: Schema)                                            extends Schema
     final case class EnumSchema(enum: List[String])                                        extends Schema
@@ -112,8 +112,11 @@ object schema {
   private val refSchemaDecoder: Decoder[RefSchema] =
     Decoder[Reference].map(RefSchema)
 
+  implicit val sumSchemaElemDecoder: Decoder[(Option[String], Schema)] =
+    (Decoder[Option[String]].at("name"), Decoder[Schema]).tupled
+
   private val sumSchemaDecoder: Decoder[SumSchema] =
-    Decoder.instance(_.downField("oneOf").as[List[Schema]].map(SumSchema))
+    Decoder.instance(_.downField("oneOf").as[List[(Option[String], Schema)]].map(SumSchema))
 
   private val objectSchemaDecoder: Decoder[ObjectSchema] =
     Decoder.instance { c =>
@@ -173,7 +176,7 @@ object schema {
       case (x, _)                        => s"$x is not well formed type".asLeft
     }
 
-  implicit val schemaDecoder: Decoder[Schema] =
+  implicit def schemaDecoder: Decoder[Schema] =
     refSchemaDecoder.widen[Schema] orElse
       sumSchemaDecoder.widen[Schema] orElse
       objectSchemaDecoder.widen[Schema] orElse
