@@ -42,9 +42,15 @@ class ParseAsyncApiTest extends CatsEffectSuite {
                         required = Nil,
                         properties = Map(
                           "displayName" -> ObjectSchema
-                            .Elem(StringSchema, CustomFields(Map("x-proto-index" -> BasicSchemaValue.IntegerValue(1)))),
+                            .Elem(
+                              StringSchema,
+                              CustomFields(Map("x-protobuf-index" -> BasicSchemaValue.IntegerValue(1)))
+                            ),
                           "email" -> ObjectSchema
-                            .Elem(StringSchema, CustomFields(Map("x-proto-index" -> BasicSchemaValue.IntegerValue(2))))
+                            .Elem(
+                              StringSchema,
+                              CustomFields(Map("x-protobuf-index" -> BasicSchemaValue.IntegerValue(2)))
+                            )
                         )
                       )
                     ),

@@ -38,6 +38,7 @@ private object MessageComponents {
 }
 
 package object protobuf {
+  val `x-protobuf-index` = "x-protobuf-index"
 
   def fromAsyncApi(asyncApi: AsyncApi): Try[List[FileDescriptorProto]] =
     // assuming 1 message schema per topic (see:https://docs.confluent.io/platform/current/schema-registry/serdes-develop/serdes-protobuf.html#multiple-event-types-in-the-same-topic)
@@ -104,13 +105,87 @@ package object protobuf {
     schema match {
       case Schema.ObjectSchema(required, properties) =>
         extractFromObjectSchema(asyncApi, required, properties, isRepeated)
+      case Schema.ArraySchema(items) =>
+        recurseFieldComponents(
+          asyncApi,
+          Nil,
+          Monoid[MessageComponents].empty,
+          "items",
+          items,
+          CustomFields(Map(`x-protobuf-index` -> BasicSchemaValue.IntegerValue(1))), // not sure this is a sane default
+          isRepeated = true
+        )
       // TODO impl!
-      case Schema.RefSchema(_)   => ???
-      case Schema.SumSchema(_)   => ???
-      case Schema.ArraySchema(_) => ???
-      case Schema.EnumSchema(_)  => ???
-      case _: Schema.BasicSchema => ???
+      case Schema.SumSchema(_)  => ???
+      case Schema.EnumSchema(_) => ???
+      case x                    => Failure(new RuntimeException(s"Schema not supported in root context: $x"))
     }
+
+  @tailrec
+  private def recurseFieldComponents(
+      asyncApi: AsyncApi,
+      required: List[String],
+      acc: MessageComponents,
+      fieldName: String,
+      schema: Schema,
+      customFields: CustomFields,
+      isRepeated: Boolean
+  ): Try[MessageComponents] = schema match {
+    case Schema.RefSchema(ref) =>
+      customFields.protoIndex.flatMap(i =>
+        resolveMessageDescriptorProtoFromRef(asyncApi, ref, isRepeated)
+          .map(
+            _.toList.map(message =>
+              PlainFieldDescriptorProto(
+                name = fieldName,
+                `type` = NamedTypeProto(message.name),
+                label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated),
+                options = Nil,
+                index = i,
+                messageProto = Some(message)
+              )
+            )
+          )
+          .map(xs =>
+            acc.combine(
+              MessageComponents(
+                fields = xs,
+                enums = Nil,
+                messages = xs.collect { case PlainFieldDescriptorProto(_, _, _, _, _, Some(msgProto)) => msgProto }
+              )
+            )
+          )
+      )
+    case Schema.SumSchema(oneOfs) =>
+      val oneofDescriptorProto = toOneofDescriptorProto(asyncApi, required, fieldName, oneOfs)
+      oneofDescriptorProto.map(acc.combine)
+    case Schema.ObjectSchema(required, properties) =>
+      extractFromObjectSchema(asyncApi, required, properties, isRepeated).map(acc.combine)
+    case Schema.ArraySchema(schema) =>
+      recurseFieldComponents(asyncApi, required, acc, fieldName, schema, customFields, isRepeated = true)
+    case Schema.EnumSchema(enum) =>
+      val enumTypeName = uppercaseFirstLetter(fieldName)
+      customFields.protoIndex.flatMap(i =>
+        Try(NonEmptyList.fromListUnsafe(enum.zipWithIndex))
+          .map(enumValues =>
+            acc
+              .appendField(
+                PlainFieldDescriptorProto(
+                  name = fieldName,
+                  `type` = NamedTypeProto(enumTypeName),
+                  label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated),
+                  options = Nil,
+                  index = i
+                )
+              )
+              .appendEnum(EnumDescriptorProto(enumTypeName, enumValues))
+          )
+      )
+    case bs: BasicSchema =>
+      customFields.protoIndex.map(i =>
+        acc.appendFields(toPlainFieldDescriptorProto(Some(required), fieldName, i, bs, isRepeated))
+      )
+  }
 
   private def extractFromObjectSchema(
       asyncApi: AsyncApi,
@@ -118,73 +193,9 @@ package object protobuf {
       properties: Map[String, ObjectSchema.Elem],
       isRep: Boolean
   ): Try[MessageComponents] = {
-    @tailrec
-    def go(
-        acc: MessageComponents,
-        fieldName: String,
-        schema: Schema,
-        customFields: CustomFields,
-        isRepeated: Boolean
-    ): Try[MessageComponents] = schema match {
-      case Schema.RefSchema(ref) =>
-        customFields.protoIndex.flatMap(i =>
-          resolveMessageDescriptorProtoFromRef(asyncApi, ref, isRepeated)
-            .map(
-              _.toList.map(message =>
-                PlainFieldDescriptorProto(
-                  name = fieldName,
-                  `type` = NamedTypeProto(message.name),
-                  label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated),
-                  options = Nil,
-                  index = i,
-                  messageProto = Some(message)
-                )
-              )
-            )
-            .map(xs =>
-              acc.combine(
-                MessageComponents(
-                  fields = xs,
-                  enums = Nil,
-                  messages = xs.collect { case PlainFieldDescriptorProto(_, _, _, _, _, Some(msgProto)) => msgProto }
-                )
-              )
-            )
-        )
-      case Schema.SumSchema(oneOfs) =>
-        val oneofDescriptorProto = toOneofDescriptorProto(asyncApi, required, fieldName, oneOfs)
-        oneofDescriptorProto.map(acc.combine)
-      case Schema.ObjectSchema(required, properties) =>
-        extractFromObjectSchema(asyncApi, required, properties, isRepeated).map(acc.combine)
-      case Schema.ArraySchema(schema) =>
-        go(acc, fieldName, schema, customFields, isRepeated = true)
-      case Schema.EnumSchema(enum) =>
-        val enumTypeName = uppercaseFirstLetter(fieldName)
-        customFields.protoIndex.flatMap(i =>
-          Try(NonEmptyList.fromListUnsafe(enum.zipWithIndex))
-            .map(enumValues =>
-              acc
-                .appendField(
-                  PlainFieldDescriptorProto(
-                    name = fieldName,
-                    `type` = NamedTypeProto(enumTypeName),
-                    label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated),
-                    options = Nil,
-                    index = i
-                  )
-                )
-                .appendEnum(EnumDescriptorProto(enumTypeName, enumValues))
-            )
-        )
-      case bs: BasicSchema =>
-        customFields.protoIndex.map(i =>
-          acc.appendFields(toPlainFieldDescriptorProto(Some(required), fieldName, i, bs, isRepeated))
-        )
-    }
-
     properties.toList
       .foldLeftM[Try, MessageComponents](Monoid[MessageComponents].empty) { case (acc, (fieldName, elem)) =>
-        go(acc, fieldName, elem.schema, elem.customFields, isRepeated = isRep)
+        recurseFieldComponents(asyncApi, required, acc, fieldName, elem.schema, elem.customFields, isRepeated = isRep)
       }
   }
 
@@ -296,9 +307,11 @@ package object protobuf {
   }
 
   implicit class CustomFieldsOps(val inner: CustomFields) {
-    def protoIndex: Try[Int] = inner.inner.get("x-proto-index") match {
-      case Some(BasicSchemaValue.IntegerValue(i)) => Success(i)
-      case x                                      => Failure(new RuntimeException(s"Missing or invalid x-proto-index: $x"))
+    def protoIndex: Try[Int] = {
+      inner.inner.get(`x-protobuf-index`) match {
+        case Some(BasicSchemaValue.IntegerValue(i)) => Success(i)
+        case x                                      => Failure(new RuntimeException(s"Missing or invalid ${`x-protobuf-index`}: $x"))
+      }
     }
   }
 }
