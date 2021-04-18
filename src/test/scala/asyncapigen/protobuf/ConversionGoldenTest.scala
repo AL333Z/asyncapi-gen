@@ -31,7 +31,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |              x-custom-fields:
          |                x-proto-index:
          |                  type: integer
-         |                  value: 2
+         |                  value: 1
          |            email:
          |              type: string
          |              format: email
@@ -39,7 +39,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |              x-custom-fields:
          |                x-proto-index:
          |                  type: integer
-         |                  value: 3
+         |                  value: 2
          |""".stripMargin
 
     val expectedProtobufs = List(
@@ -47,8 +47,8 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |syntax = "proto3";
          |
          |message UserSignedUp {
-         |  optional string displayName = 2;
-         |  string email = 3;
+         |  optional string displayName = 1;
+         |  string email = 2;
          |}
          |""".stripMargin
     )
@@ -83,7 +83,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |            x-custom-fields:
          |              x-proto-index:
          |                type: integer
-         |                value: 2
+         |                value: 1
          |          email:
          |            type: string
          |            format: email
@@ -91,7 +91,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |            x-custom-fields:
          |              x-proto-index:
          |                type: integer
-         |                value: 3
+         |                value: 2
          |""".stripMargin
 
     val expectedProtobufs = List(
@@ -99,8 +99,8 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |syntax = "proto3";
          |
          |message UserSignedUp {
-         |  optional string displayName = 2;
-         |  string email = 3;
+         |  optional string displayName = 1;
+         |  string email = 2;
          |}
          |""".stripMargin
     )
@@ -162,7 +162,6 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |                    value: 4
          |""".stripMargin
 
-    // FIXME the indexes in the oneof are wrong, adjust the test once we add support for those!
     val expectedProtobufs = List(
       s"""
          |syntax = "proto3";
@@ -240,7 +239,6 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |
          |""".stripMargin
 
-    // FIXME the indexes in the oneof are wrong, adjust the test once we add support for those!
     val expectedProtobufs = List(
       s"""
          |syntax = "proto3";
@@ -283,7 +281,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |              x-custom-fields:
          |                x-proto-index:
          |                  type: integer
-         |                  value: 2
+         |                  value: 1
          |""".stripMargin
 
     val expectedProtobufs = List(
@@ -291,7 +289,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |syntax = "proto3";
          |
          |message UserSignedUp {
-         |  optional MyEnum myEnum = 2;
+         |  optional MyEnum myEnum = 1;
          |  enum MyEnum {
          |    bar = 0;
          |    foo = 1;
@@ -327,7 +325,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |              x-custom-fields:
          |                x-proto-index:
          |                  type: integer
-         |                  value: 2
+         |                  value: 1
          |            stuffs:
          |              type: array
          |              items:
@@ -335,7 +333,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |              x-custom-fields:
          |                x-proto-index:
          |                  type: integer
-         |                  value: 3
+         |                  value: 2
          |            myEnums:
          |              type: array
          |              items:
@@ -344,7 +342,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |              x-custom-fields:
          |                x-proto-index:
          |                  type: integer
-         |                  value: 4
+         |                  value: 3
          |components:
          |  messages:
          |    Item:
@@ -357,9 +355,9 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |syntax = "proto3";
          |
          |message UserSignedUp {
-         |  repeated string strings = 2;
-         |  repeated Item stuffs = 3;
-         |  repeated MyEnums myEnums = 4;
+         |  repeated string strings = 1;
+         |  repeated Item stuffs = 2;
+         |  repeated MyEnums myEnums = 3;
          |  message Item {}
          |  enum MyEnums {
          |    bar = 0;

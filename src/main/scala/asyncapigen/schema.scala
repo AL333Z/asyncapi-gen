@@ -93,16 +93,17 @@ object schema {
     final case class EnumSchema(enum: List[String])                                                   extends Schema
     final case class SumSchema(oneOf: List[SumSchema.Elem])                                           extends Schema
 
+    final case class CustomFields(inner: Map[String, BasicSchemaValue]) extends AnyVal
+    object CustomFields {
+      val empty: CustomFields = CustomFields(Map.empty)
+    }
+
     object ObjectSchema {
-      final case class Elem(schema: Schema, customFields: Map[String, BasicSchemaValue] = Map.empty)
+      final case class Elem(schema: Schema, customFields: CustomFields = CustomFields.empty)
     }
 
     object SumSchema {
-      final case class Elem(
-          schema: Schema,
-          name: Option[String],
-          customFields: Map[String, BasicSchemaValue] = Map.empty
-      )
+      final case class Elem(schema: Schema, name: Option[String], customFields: CustomFields = CustomFields.empty)
     }
 
     sealed abstract class BasicSchema extends Schema with Product with Serializable
@@ -143,7 +144,7 @@ object schema {
   private val refSchemaDecoder: Decoder[RefSchema] =
     Decoder[Reference].map(RefSchema)
 
-  private val customFieldsDecoder: Decoder[Map[String, BasicSchemaValue]] = Decoder
+  private val customFieldsDecoder: Decoder[CustomFields] = Decoder
     .decodeOption(
       Decoder.decodeMap[String, BasicSchemaValue](
         KeyDecoder.decodeKeyString,
@@ -168,6 +169,7 @@ object schema {
     )
     .map(_.getOrElse(Map.empty))
     .at("x-custom-fields")
+    .map(CustomFields.apply)
 
   implicit val sumSchemaElemDecoder: Decoder[SumSchema.Elem] =
     (Decoder[Schema], Decoder[Option[String]].at("name"), customFieldsDecoder).mapN(SumSchema.Elem.apply)

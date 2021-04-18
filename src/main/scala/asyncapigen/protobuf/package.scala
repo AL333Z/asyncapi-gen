@@ -7,14 +7,14 @@ import asyncapigen.protobuf.schema.FieldDescriptorProto.{
 }
 import asyncapigen.protobuf.schema.FieldProtoType._
 import asyncapigen.protobuf.schema._
-import asyncapigen.schema.Schema.{BasicSchema, ObjectSchema, SumSchema}
+import asyncapigen.schema.Schema.{BasicSchema, BasicSchemaValue, CustomFields, ObjectSchema, SumSchema}
 import asyncapigen.schema.{AsyncApi, Message, Reference, Schema}
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.kernel.Monoid
 
 import scala.annotation.tailrec
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 private case class MessageComponents(
     fields: List[FieldDescriptorProto],
@@ -121,59 +121,65 @@ package object protobuf {
     def go(
         acc: MessageComponents,
         fieldName: String,
-        v: Schema,
-        i: Int,
+        schema: Schema,
+        customFields: CustomFields,
         isRepeated: Boolean
-    ): Try[MessageComponents] = v match {
+    ): Try[MessageComponents] = schema match {
       case Schema.RefSchema(ref) =>
-        resolveMessageDescriptorProtoFromRef(asyncApi, ref, isRepeated)
-          .map(
-            _.toList.map(message =>
-              PlainFieldDescriptorProto(
-                name = fieldName,
-                `type` = NamedTypeProto(message.name),
-                label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated),
-                options = Nil,
-                index = i + 1, // TODO how to handle indexes?
-                messageProto = Some(message)
+        customFields.protoIndex.flatMap(i =>
+          resolveMessageDescriptorProtoFromRef(asyncApi, ref, isRepeated)
+            .map(
+              _.toList.map(message =>
+                PlainFieldDescriptorProto(
+                  name = fieldName,
+                  `type` = NamedTypeProto(message.name),
+                  label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated),
+                  options = Nil,
+                  index = i,
+                  messageProto = Some(message)
+                )
               )
             )
-          )
-          .map(xs =>
-            acc.combine(
-              MessageComponents(xs, Nil, xs.collect { case x if x.messageProto.isDefined => x.messageProto.get })
+            .map(xs =>
+              acc.combine(
+                MessageComponents(xs, Nil, xs.collect { case x if x.messageProto.isDefined => x.messageProto.get })
+              )
             )
-          )
-      case Schema.SumSchema(oneOfs) => // TODO indexes!
-        val oneofDescriptorProto = toOneofDescriptorProto(asyncApi, required, fieldName, oneOfs.zipWithIndex)
+        )
+      case Schema.SumSchema(oneOfs) =>
+        val oneofDescriptorProto = toOneofDescriptorProto(asyncApi, required, fieldName, oneOfs)
         Success(acc.combine(oneofDescriptorProto))
       case Schema.ObjectSchema(required, properties) =>
         extractFromObjectSchema(asyncApi, required, properties, isRepeated).map(acc.combine)
       case Schema.ArraySchema(schema) =>
-        go(acc, fieldName, schema, i, isRepeated = true)
+        go(acc, fieldName, schema, customFields, isRepeated = true)
       case Schema.EnumSchema(enum) =>
         val enumTypeName = uppercaseFirstLetter(fieldName)
-        Try(NonEmptyList.fromListUnsafe(enum.zipWithIndex))
-          .map(enumValues =>
-            acc
-              .appendField(
-                PlainFieldDescriptorProto(
-                  name = fieldName,
-                  `type` = NamedTypeProto(enumTypeName),
-                  label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated),
-                  options = Nil,
-                  index = i + 1 // TODO how to handle indexes?
+        customFields.protoIndex.flatMap(i =>
+          Try(NonEmptyList.fromListUnsafe(enum.zipWithIndex))
+            .map(enumValues =>
+              acc
+                .appendField(
+                  PlainFieldDescriptorProto(
+                    name = fieldName,
+                    `type` = NamedTypeProto(enumTypeName),
+                    label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated),
+                    options = Nil,
+                    index = i
+                  )
                 )
-              )
-              .appendEnum(EnumDescriptorProto(enumTypeName, enumValues))
-          )
+                .appendEnum(EnumDescriptorProto(enumTypeName, enumValues))
+            )
+        )
       case bs: BasicSchema =>
-        Success(acc.appendFields(toPlainFieldDescriptorProto(Some(required), fieldName, i, bs, isRepeated)))
+        customFields.protoIndex.map(i =>
+          acc.appendFields(toPlainFieldDescriptorProto(Some(required), fieldName, i, bs, isRepeated))
+        )
     }
 
-    properties.zipWithIndex.toList // TODO understand how to keep track of field indexes
-      .foldLeftM[Try, MessageComponents](Monoid[MessageComponents].empty) { case (acc, ((fieldName, v), i)) =>
-        go(acc, fieldName, v.schema, i, isRepeated = isRep)
+    properties.toList
+      .foldLeftM[Try, MessageComponents](Monoid[MessageComponents].empty) { case (acc, (fieldName, elem)) =>
+        go(acc, fieldName, elem.schema, elem.customFields, isRepeated = isRep)
       }
   }
 
@@ -181,11 +187,12 @@ package object protobuf {
       asyncApi: AsyncApi,
       required: List[String],
       fieldName: String,
-      oneOfs: List[(SumSchema.Elem, Int)]
-  ): MessageComponents = { // TODO maybe this should be a Try?
+      oneOfs: List[SumSchema.Elem]
+  ): MessageComponents = { // TODO this should be a Try?
     val fields: List[Either[PlainFieldDescriptorProto, EnumFieldDescriptorProto]] = oneOfs.flatMap {
-      case (SumSchema.Elem(s, maybeName, _), i) =>
+      case SumSchema.Elem(s, maybeName, customFields) =>
         val name = lowercaseFirstLetter(maybeName.getOrElse(fieldName))
+        val i    = customFields.protoIndex.get // TODO
         s match {
           case Schema.RefSchema(ref) =>
             resolveMessageDescriptorProtoFromRef(asyncApi, ref, isRepeated = false).toOption.flatten.toList.map(
@@ -195,7 +202,7 @@ package object protobuf {
                   `type` = NamedTypeProto(message.name),
                   label = toFieldDescriptorProtoLabel(None, fieldName, isRepeated = false),
                   options = Nil,
-                  index = i + 1, // TODO how to handle indexes?
+                  index = i, // TODO how to handle indexes?
                   messageProto = Some(message)
                 ).asLeft
             )
@@ -265,7 +272,7 @@ package object protobuf {
         `type` = pbType,
         label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated),
         options = Nil,
-        index = i + 1 // TODO how to handle indexes?
+        index = i
       )
     )
   }
@@ -278,5 +285,12 @@ package object protobuf {
     if (isRepeated) FieldDescriptorProtoLabel.Repeated
     else if (required.isEmpty || required.get.contains(fieldName)) FieldDescriptorProtoLabel.Required
     else FieldDescriptorProtoLabel.Optional
+  }
+
+  implicit class CustomFieldsOps(val inner: CustomFields) {
+    def protoIndex: Try[Int] = inner.inner.get("x-proto-index") match {
+      case Some(BasicSchemaValue.IntegerValue(i)) => Success(i)
+      case x                                      => Failure(new RuntimeException(s"Missing or invalid x-proto-index: $x"))
+    }
   }
 }

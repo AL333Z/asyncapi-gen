@@ -3,7 +3,7 @@ package asyncapigen
 import asyncapigen.ParseAsyncApi.YamlSource
 import asyncapigen.schema.Channel.{ItemObject, Operation}
 import asyncapigen.schema.Schema.BasicSchema.StringSchema
-import asyncapigen.schema.Schema.{BasicSchemaValue, ObjectSchema}
+import asyncapigen.schema.Schema.{BasicSchemaValue, CustomFields, ObjectSchema}
 import asyncapigen.schema.{AsyncApi, Info, Message}
 import cats.effect.IO
 import munit.CatsEffectSuite
@@ -42,9 +42,9 @@ class ParseAsyncApiTest extends CatsEffectSuite {
                         required = Nil,
                         properties = Map(
                           "displayName" -> ObjectSchema
-                            .Elem(StringSchema, Map("x-proto-index" -> BasicSchemaValue.IntegerValue(1))),
+                            .Elem(StringSchema, CustomFields(Map("x-proto-index" -> BasicSchemaValue.IntegerValue(1)))),
                           "email" -> ObjectSchema
-                            .Elem(StringSchema, Map("x-proto-index" -> BasicSchemaValue.IntegerValue(2)))
+                            .Elem(StringSchema, CustomFields(Map("x-proto-index" -> BasicSchemaValue.IntegerValue(2))))
                         )
                       )
                     ),
