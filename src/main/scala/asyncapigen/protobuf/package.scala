@@ -7,7 +7,7 @@ import asyncapigen.protobuf.schema.FieldDescriptorProto.{
 }
 import asyncapigen.protobuf.schema.FieldProtoType._
 import asyncapigen.protobuf.schema._
-import asyncapigen.schema.Schema.{BasicSchema, BasicSchemaValue, CustomFields, ObjectSchema, SumSchema}
+import asyncapigen.schema.Schema._
 import asyncapigen.schema.{AsyncApi, Message, Reference, Schema}
 import cats.data.NonEmptyList
 import cats.implicits._
@@ -48,8 +48,8 @@ package object protobuf {
           .flatTraverse(op => extractMessages(asyncApi, name, op.message, isRepeated = false).map(_.toList))
           .map(messages =>
             FileDescriptorProto(
-              name = name.split('/').last, // TODO what to use?
-              `package` = None,            //Some(s"org.demo.${name.replace('/', '.')}"), // TODO what to use?
+              name = name.split('/').last, // TODO not sure what to use
+              `package` = None,            // TODO what to use? e.g. Some(s"org.demo.${name.replace('/', '.')}")
               messageTypes = messages,
               enumTypes = Nil,
               syntax = "proto3"
@@ -67,7 +67,7 @@ package object protobuf {
       case Some(Left(message)) =>
         message.payload match {
           case Left(schema) =>
-            val messageName = message.name.getOrElse(name.split('/').last.capitalize) // TODO what to put here?
+            val messageName = message.name.getOrElse(name.split('/').last.capitalize) // TODO not sure what to put here
             extractMessageComponents(asyncApi, schema, isRepeated).map(components =>
               Some(
                 MessageDescriptorProto(
@@ -75,7 +75,7 @@ package object protobuf {
                   fields = components.fields,
                   nestedMessages = components.messages,
                   nestedEnums = components.enums,
-                  options = Nil // TODO
+                  options = Nil
                 )
               )
             )
@@ -102,10 +102,11 @@ package object protobuf {
       isRepeated: Boolean
   ): Try[MessageComponents] =
     schema match {
-      case Schema.RefSchema(_) => ???
-      case Schema.SumSchema(_) => ???
       case Schema.ObjectSchema(required, properties) =>
         extractFromObjectSchema(asyncApi, required, properties, isRepeated)
+      // TODO impl!
+      case Schema.RefSchema(_)   => ???
+      case Schema.SumSchema(_)   => ???
       case Schema.ArraySchema(_) => ???
       case Schema.EnumSchema(_)  => ???
       case _: Schema.BasicSchema => ???
@@ -142,13 +143,17 @@ package object protobuf {
             )
             .map(xs =>
               acc.combine(
-                MessageComponents(xs, Nil, xs.collect { case x if x.messageProto.isDefined => x.messageProto.get })
+                MessageComponents(
+                  fields = xs,
+                  enums = Nil,
+                  messages = xs.collect { case PlainFieldDescriptorProto(_, _, _, _, _, Some(msgProto)) => msgProto }
+                )
               )
             )
         )
       case Schema.SumSchema(oneOfs) =>
         val oneofDescriptorProto = toOneofDescriptorProto(asyncApi, required, fieldName, oneOfs)
-        Success(acc.combine(oneofDescriptorProto))
+        oneofDescriptorProto.map(acc.combine)
       case Schema.ObjectSchema(required, properties) =>
         extractFromObjectSchema(asyncApi, required, properties, isRepeated).map(acc.combine)
       case Schema.ArraySchema(schema) =>
@@ -188,56 +193,59 @@ package object protobuf {
       required: List[String],
       fieldName: String,
       oneOfs: List[SumSchema.Elem]
-  ): MessageComponents = { // TODO this should be a Try?
-    val fields: List[Either[PlainFieldDescriptorProto, EnumFieldDescriptorProto]] = oneOfs.flatMap {
-      case SumSchema.Elem(s, maybeName, customFields) =>
-        val name = lowercaseFirstLetter(maybeName.getOrElse(fieldName))
-        val i    = customFields.protoIndex.get // TODO
-        s match {
-          case Schema.RefSchema(ref) =>
-            resolveMessageDescriptorProtoFromRef(asyncApi, ref, isRepeated = false).toOption.flatten.toList.map(
-              message =>
-                PlainFieldDescriptorProto(
-                  name = lowercaseFirstLetter(message.name),
-                  `type` = NamedTypeProto(message.name),
-                  label = toFieldDescriptorProtoLabel(None, fieldName, isRepeated = false),
-                  options = Nil,
-                  index = i, // TODO how to handle indexes?
-                  messageProto = Some(message)
-                ).asLeft
-            )
-          case Schema.SumSchema(_)       => ??? // TODO not supported in protobuf?
-          case Schema.ObjectSchema(_, _) => ??? // TODO not supported in protobuf?
-          case Schema.ArraySchema(_)     => ??? // TODO not supported in protobuf?
-          case Schema.EnumSchema(enum) =>
-            List(
-              EnumFieldDescriptorProto(
-                name = name,
-                enum = EnumDescriptorProto(
-                  name = fieldName,
-                  symbols = NonEmptyList.fromListUnsafe(enum.zipWithIndex)
-                ),
-                label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated = false),
-                index = i
-              ).asRight
-            )
-          case schema: BasicSchema =>
-            toPlainFieldDescriptorProto(None, name, i, schema, isRepeated = false).map(_.asLeft)
+  ): Try[MessageComponents] =
+    oneOfs
+      .flatTraverse { elem =>
+        val name = lowercaseFirstLetter(elem.name.getOrElse(fieldName))
+        elem.customFields.protoIndex.flatMap { i =>
+          elem.schema match {
+            case Schema.RefSchema(ref) =>
+              resolveMessageDescriptorProtoFromRef(asyncApi, ref, isRepeated = false).map(
+                _.toList.map(message =>
+                  PlainFieldDescriptorProto(
+                    name = lowercaseFirstLetter(message.name),
+                    `type` = NamedTypeProto(message.name),
+                    label = toFieldDescriptorProtoLabel(None, fieldName, isRepeated = false),
+                    options = Nil,
+                    index = i,
+                    messageProto = Some(message)
+                  ).asLeft
+                )
+              )
+            case Schema.EnumSchema(enum) =>
+              Try(NonEmptyList.fromListUnsafe(enum))
+                .map(enumValues =>
+                  List(
+                    EnumFieldDescriptorProto(
+                      name = name,
+                      enum = EnumDescriptorProto(
+                        name = fieldName,
+                        symbols = enumValues.zipWithIndex
+                      ),
+                      label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated = false),
+                      index = i
+                    ).asRight
+                  )
+                )
+            case schema: BasicSchema =>
+              Success(toPlainFieldDescriptorProto(None, name, i, schema, isRepeated = false).map(_.asLeft))
+            case x => Failure(new RuntimeException(s"Schema not supported in protobuf oneof: $x"))
+          }
         }
-    }
-
-    MessageComponents(
-      fields = List(
-        OneofDescriptorProto(
-          name = fieldName,
-          label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated = false),
-          fields = fields
+      }
+      .map(fields =>
+        MessageComponents(
+          fields = List(
+            OneofDescriptorProto(
+              name = fieldName,
+              label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated = false),
+              fields = fields
+            )
+          ),
+          enums = fields.collect { case Right(e) => e.enum },
+          messages = fields.collect { case Left(PlainFieldDescriptorProto(_, _, _, _, _, Some(msgProto))) => msgProto }
         )
-      ),
-      enums = fields.collect { case Right(e) => e.enum },
-      messages = fields.collect { case Left(x) if x.messageProto.isDefined => x.messageProto.get }
-    )
-  }
+      )
 
   private def lowercaseFirstLetter(str: String): String =
     if (str.isEmpty) "" else s"${Character.toLowerCase(str.charAt(0))}${str.substring(1)}"
@@ -260,8 +268,8 @@ package object protobuf {
       case BasicSchema.ByteSchema     => BytesProto
       case BasicSchema.BinarySchema   => Int32Proto
       case BasicSchema.BooleanSchema  => BoolProto
-      case BasicSchema.DateSchema     => StringProto // google/protobuf/timestamp.proto instead?
-      case BasicSchema.DateTimeSchema => StringProto // google/protobuf/timestamp.proto instead?
+      case BasicSchema.DateSchema     => StringProto // TODO google/protobuf/timestamp.proto instead? or what else?
+      case BasicSchema.DateTimeSchema => StringProto // TODO google/protobuf/timestamp.proto instead? or what else?
       case BasicSchema.PasswordSchema => StringProto
       case BasicSchema.UUIDSchema     => StringProto
       case BasicSchema.StringSchema   => StringProto
@@ -283,7 +291,7 @@ package object protobuf {
       isRepeated: Boolean
   ): FieldDescriptorProtoLabel = {
     if (isRepeated) FieldDescriptorProtoLabel.Repeated
-    else if (required.isEmpty || required.get.contains(fieldName)) FieldDescriptorProtoLabel.Required
+    else if (required.isEmpty || required.exists(_.contains(fieldName))) FieldDescriptorProtoLabel.Required
     else FieldDescriptorProtoLabel.Optional
   }
 

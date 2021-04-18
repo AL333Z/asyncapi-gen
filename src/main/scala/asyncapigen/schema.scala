@@ -47,7 +47,7 @@ object schema {
 
   object Channel {
     final case class ItemObject(
-        ref: Option[String], // $ref
+        ref: Option[String],
         description: Option[String],
         subscribe: Option[Operation],
         publish: Option[Operation],
@@ -326,7 +326,7 @@ object schema {
       "parameters"
     )(
       (
-          ref: Option[String], // $ref
+          ref: Option[String],
           description: Option[String],
           subscribe: Option[Channel.Operation],
           publish: Option[Channel.Operation],
