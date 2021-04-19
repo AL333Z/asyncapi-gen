@@ -436,7 +436,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |syntax = "proto3";
          |
          |message UserSignedUp {
-         |  optional Values values = 1;
+         |  Values values = 1;
          |  enum Values {
          |    bar = 0;
          |    foo = 1;
@@ -474,7 +474,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |syntax = "proto3";
          |
          |message UserSignedUp {
-         |  optional string value = 1;
+         |  string value = 1;
          |}
          |""".stripMargin
     )

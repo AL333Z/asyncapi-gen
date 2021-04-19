@@ -38,8 +38,6 @@ private object MessageComponents {
 }
 
 package object protobuf {
-  val `x-protobuf-index` = "x-protobuf-index"
-
   def fromAsyncApi(asyncApi: AsyncApi): Try[List[FileDescriptorProto]] =
     // assuming 1 message schema per topic (see:https://docs.confluent.io/platform/current/schema-registry/serdes-develop/serdes-protobuf.html#multiple-event-types-in-the-same-topic)
     asyncApi.channels.toList
@@ -107,24 +105,51 @@ package object protobuf {
         extractFromObjectSchema(asyncApi, required, properties, isRepeated)
       case Schema.ArraySchema(items) =>
         recurseFieldComponents(
-          asyncApi,
-          Nil,
-          Monoid[MessageComponents].empty,
-          "items",
-          items,
-          CustomFields(Map(`x-protobuf-index` -> BasicSchemaValue.IntegerValue(1))), // not sure this is a sane default
+          asyncApi = asyncApi,
+          required = None,
+          acc = Monoid[MessageComponents].empty,
+          fieldName = "items",
+          schema = items,
+          customFields = CustomFields.withDefaultProtobufIndex,
           isRepeated = true
         )
-      // TODO impl!
-      case Schema.SumSchema(_)  => ???
-      case Schema.EnumSchema(_) => ???
-      case x                    => Failure(new RuntimeException(s"Schema not supported in root context: $x"))
+      case basicSchema: Schema.BasicSchema =>
+        recurseFieldComponents(
+          asyncApi = asyncApi,
+          required = None,
+          acc = Monoid[MessageComponents].empty,
+          fieldName = "value",
+          schema = basicSchema,
+          customFields = CustomFields.withDefaultProtobufIndex,
+          isRepeated = false
+        )
+      case sum: Schema.SumSchema =>
+        recurseFieldComponents(
+          asyncApi = asyncApi,
+          required = None,
+          acc = Monoid[MessageComponents].empty,
+          fieldName = "kind",
+          schema = sum,
+          customFields = CustomFields.withDefaultProtobufIndex,
+          isRepeated = false
+        )
+      case enum: Schema.EnumSchema =>
+        recurseFieldComponents(
+          asyncApi = asyncApi,
+          required = None,
+          acc = Monoid[MessageComponents].empty,
+          fieldName = "values",
+          schema = enum,
+          customFields = CustomFields.withDefaultProtobufIndex,
+          isRepeated = false
+        )
+      case x => Failure(new RuntimeException(s"Inconceivable: schema not supported: $x."))
     }
 
   @tailrec
   private def recurseFieldComponents(
       asyncApi: AsyncApi,
-      required: List[String],
+      required: Option[List[String]],
       acc: MessageComponents,
       fieldName: String,
       schema: Schema,
@@ -139,7 +164,7 @@ package object protobuf {
               PlainFieldDescriptorProto(
                 name = fieldName,
                 `type` = NamedTypeProto(message.name),
-                label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated),
+                label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated),
                 options = Nil,
                 index = i,
                 messageProto = Some(message)
@@ -173,7 +198,7 @@ package object protobuf {
                 PlainFieldDescriptorProto(
                   name = fieldName,
                   `type` = NamedTypeProto(enumTypeName),
-                  label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated),
+                  label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated),
                   options = Nil,
                   index = i
                 )
@@ -183,7 +208,7 @@ package object protobuf {
       )
     case bs: BasicSchema =>
       customFields.protoIndex.map(i =>
-        acc.appendFields(toPlainFieldDescriptorProto(Some(required), fieldName, i, bs, isRepeated))
+        acc.appendFields(toPlainFieldDescriptorProto(required, fieldName, i, bs, isRepeated))
       )
   }
 
@@ -195,13 +220,21 @@ package object protobuf {
   ): Try[MessageComponents] = {
     properties.toList
       .foldLeftM[Try, MessageComponents](Monoid[MessageComponents].empty) { case (acc, (fieldName, elem)) =>
-        recurseFieldComponents(asyncApi, required, acc, fieldName, elem.schema, elem.customFields, isRepeated = isRep)
+        recurseFieldComponents(
+          asyncApi = asyncApi,
+          required = Some(required),
+          acc = acc,
+          fieldName = fieldName,
+          schema = elem.schema,
+          customFields = elem.customFields,
+          isRepeated = isRep
+        )
       }
   }
 
   private def toOneofDescriptorProto(
       asyncApi: AsyncApi,
-      required: List[String],
+      required: Option[List[String]],
       fieldName: String,
       oneOfs: List[SumSchema.Elem]
   ): Try[MessageComponents] =
@@ -233,7 +266,7 @@ package object protobuf {
                         name = fieldName,
                         symbols = enumValues.zipWithIndex
                       ),
-                      label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated = false),
+                      label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated = false),
                       index = i
                     ).asRight
                   )
@@ -249,7 +282,7 @@ package object protobuf {
           fields = List(
             OneofDescriptorProto(
               name = fieldName,
-              label = toFieldDescriptorProtoLabel(Some(required), fieldName, isRepeated = false),
+              label = toFieldDescriptorProtoLabel(required, fieldName, isRepeated = false),
               fields = fields
             )
           ),
@@ -308,10 +341,18 @@ package object protobuf {
 
   implicit class CustomFieldsOps(val inner: CustomFields) {
     def protoIndex: Try[Int] = {
-      inner.inner.get(`x-protobuf-index`) match {
+      inner.inner.get(CustomFields.`x-protobuf-index`) match {
         case Some(BasicSchemaValue.IntegerValue(i)) => Success(i)
-        case x                                      => Failure(new RuntimeException(s"Missing or invalid ${`x-protobuf-index`}: $x"))
+        case x                                      => Failure(new RuntimeException(s"Missing or invalid ${CustomFields.`x-protobuf-index`}: $x"))
       }
     }
+  }
+
+  implicit class CustomFieldsTypeOps(val inner: CustomFields.type) {
+    val `x-protobuf-index` = "x-protobuf-index"
+
+    val withDefaultProtobufIndex: CustomFields = CustomFields(
+      Map(`x-protobuf-index` -> BasicSchemaValue.IntegerValue(1))
+    )
   }
 }
