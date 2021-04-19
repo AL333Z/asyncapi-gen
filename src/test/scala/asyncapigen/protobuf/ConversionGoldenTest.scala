@@ -409,6 +409,127 @@ class ConversionGoldenTest extends CatsEffectSuite {
     checkConversion(input, expectedProtobufs)
   }
 
+  test("asyncapi to protobuf - root enum") {
+    val input: String =
+      s"""
+         |asyncapi: 2.0.0
+         |info:
+         |  title: Account Service
+         |  version: 1.0.0
+         |  description: This service is in charge of processing user signups
+         |channels:
+         |  user/signedup:
+         |    subscribe:
+         |      message:
+         |        name: UserSignedUp
+         |        payload:
+         |          type: string
+         |          enum: [ bar, foo ]
+         |          x-custom-fields:
+         |            x-protobuf-index:
+         |              type: integer
+         |              value: 1
+         |""".stripMargin
+
+    val expectedProtobufs = List(
+      s"""
+         |syntax = "proto3";
+         |
+         |message UserSignedUp {
+         |  optional Values values = 1;
+         |  enum Values {
+         |    bar = 0;
+         |    foo = 1;
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+    checkConversion(input, expectedProtobufs)
+  }
+
+  test("asyncapi to protobuf - root basic") {
+    val input: String =
+      s"""
+         |asyncapi: 2.0.0
+         |info:
+         |  title: Account Service
+         |  version: 1.0.0
+         |  description: This service is in charge of processing user signups
+         |channels:
+         |  user/signedup:
+         |    subscribe:
+         |      message:
+         |        name: UserSignedUp
+         |        payload:
+         |          type: string
+         |          x-custom-fields:
+         |            x-protobuf-index:
+         |              type: integer
+         |              value: 1
+         |""".stripMargin
+
+    val expectedProtobufs = List(
+      s"""
+         |syntax = "proto3";
+         |
+         |message UserSignedUp {
+         |  optional string value = 1;
+         |}
+         |""".stripMargin
+    )
+
+    checkConversion(input, expectedProtobufs)
+  }
+
+  test("asyncapi to protobuf - root oneof with basic types") {
+    val input: String =
+      s"""
+         |asyncapi: 2.0.0
+         |info:
+         |  title: Document Service
+         |  version: 1.0.0
+         |  description: This service is in charge of processing document updates
+         |channels:
+         |  document/documentStateChange:
+         |    subscribe:
+         |      message:
+         |        $$ref: '#/components/messages/DocumentStateChange'
+         |components:
+         |  messages:
+         |    DocumentStateChange:
+         |      payload:
+         |        oneOf:
+         |          - type: string
+         |            name: StringEventType
+         |            x-custom-fields:
+         |              x-protobuf-index:
+         |                type: integer
+         |                value: 3
+         |          - type: integer
+         |            name: IntEventType
+         |            x-custom-fields:
+         |              x-protobuf-index:
+         |                type: integer
+         |                value: 4
+         |""".stripMargin
+
+    val expectedProtobufs = List(
+      s"""
+         |syntax = "proto3";
+         |
+         |message DocumentStateChange {
+         |  oneof kind {
+         |    string stringEventType = 3;
+         |    int32 intEventType = 4;
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+    checkConversion(input, expectedProtobufs)
+  }
+
   private def checkConversion(input: String, expectedProtobufs: List[String]): IO[Unit] = {
     for {
       asyncApi  <- ParseAsyncApi.parseYamlAsyncApiContent[IO](input)
