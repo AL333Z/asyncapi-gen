@@ -1,8 +1,8 @@
 package asyncapigen.protobuf
 
-import asyncapigen.ParseAsyncApi
 import asyncapigen.Printer.syntax._
 import asyncapigen.protobuf.print._
+import asyncapigen.{protobuf, ParseAsyncApi}
 import cats.effect.IO
 import munit.CatsEffectSuite
 
@@ -533,7 +533,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
   private def checkConversion(input: String, expectedProtobufs: List[String]): IO[Unit] = {
     for {
       asyncApi  <- ParseAsyncApi.parseYamlAsyncApiContent[IO](input)
-      protobufs <- IO.fromTry(fromAsyncApi(asyncApi))
+      protobufs <- IO.fromTry(protobuf.protobuf.fromAsyncApi(asyncApi))
     } yield protobufs.zip(expectedProtobufs).foreach { case (protobuf, expected) =>
       assertNoDiff(protobuf.print.normalized, expected.normalized)
     }

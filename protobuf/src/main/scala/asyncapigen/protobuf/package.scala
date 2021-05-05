@@ -1,4 +1,4 @@
-package asyncapigen
+package asyncapigen.protobuf
 
 import asyncapigen.protobuf.schema.FieldDescriptorProto.{
   EnumFieldDescriptorProto,

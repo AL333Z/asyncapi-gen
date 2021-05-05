@@ -9,8 +9,8 @@ import asyncapigen.protobuf.schema.FieldDescriptorProto.{
 }
 import asyncapigen.protobuf.schema.{MessageDescriptorProto, _}
 import cats.data.NonEmptyList
-import munit.FunSuite
 import cats.implicits._
+import munit.FunSuite
 
 class printTest extends FunSuite {
   test("print a basic file descriptor message") {
