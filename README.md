@@ -1,4 +1,4 @@
-An attempt to transform an (asyncapi)[https://www.asyncapi.com/docs/specifications/2.0.0] spec to a target schema.
+An attempt to transform an [asyncapi](https://www.asyncapi.com/docs/specifications/2.0.0) spec to a target schema.
 
 Not much to see here yet.
 
