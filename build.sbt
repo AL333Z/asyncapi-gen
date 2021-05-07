@@ -4,16 +4,20 @@ ThisBuild / organization := "com.example"
 ThisBuild / organizationName := "example"
 
 addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
+
+val catsEffects = "org.typelevel" %% "cats-effect" % "3.0.1"
+val circeV      = "0.13.0"
+
 val core = project
   .in(file("core"))
   .settings(
     name := "asyncapi-gen-core",
     libraryDependencies ++= List(
       "org.typelevel" %% "munit-cats-effect-3" % "0.13.1" % Test,
-      "org.typelevel" %% "cats-effect"         % "3.0.1",
-      "io.circe"      %% "circe-core"          % "0.13.0",
-      "io.circe"      %% "circe-parser"        % "0.13.0",
-      "io.circe"      %% "circe-yaml"          % "0.13.1"
+      catsEffects,
+      "io.circe" %% "circe-core"   % circeV,
+      "io.circe" %% "circe-parser" % circeV,
+      "io.circe" %% "circe-yaml"   % "0.13.1"
     )
   )
 
@@ -23,11 +27,11 @@ val protobuf = project
     name := "asyncapi-gen-protobuf",
     libraryDependencies ++= List(
       "org.typelevel" %% "munit-cats-effect-3" % "0.13.1" % Test,
-      "org.typelevel" %% "cats-effect"         % "3.0.1"
+      catsEffects
     )
   )
   .dependsOn(core)
 
-val root = project
+val `asyncapi-gen` = project
   .in(file("."))
   .aggregate(core, protobuf)
