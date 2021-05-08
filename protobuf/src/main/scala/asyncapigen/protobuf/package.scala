@@ -38,7 +38,7 @@ private object MessageComponents {
 }
 
 package object protobuf {
-  def fromAsyncApi(asyncApi: AsyncApi): Try[List[FileDescriptorProto]] =
+  def fromAsyncApi(asyncApi: AsyncApi, `package`: String): Try[List[FileDescriptorProto]] =
     // assuming 1 message schema per topic (see:https://docs.confluent.io/platform/current/schema-registry/serdes-develop/serdes-protobuf.html#multiple-event-types-in-the-same-topic)
     asyncApi.channels.toList
       .traverse { case (name, item) =>
@@ -47,8 +47,8 @@ package object protobuf {
           .flatTraverse(op => extractMessages(asyncApi, name, op.message, isRepeated = false).map(_.toList))
           .map(messages =>
             FileDescriptorProto(
-              name = name.split('/').last, // TODO not sure what to use
-              `package` = None,            // TODO what to use? e.g. Some(s"org.demo.${name.replace('/', '.')}")
+              name = uppercaseFirstLetter(name.split('/').last), // TODO not sure what to use
+              `package` = Some(`package`),
               messageTypes = messages,
               enumTypes = Nil,
               syntax = "proto3"

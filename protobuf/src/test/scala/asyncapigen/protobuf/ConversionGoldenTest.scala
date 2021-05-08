@@ -45,7 +45,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
     val expectedProtobufs = List(
       s"""
          |syntax = "proto3";
-         |
+         |package org.demo;
          |message UserSignedUp {
          |  optional string displayName = 1;
          |  string email = 2;
@@ -97,7 +97,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
     val expectedProtobufs = List(
       s"""
          |syntax = "proto3";
-         |
+         |package org.demo;
          |message UserSignedUp {
          |  optional string displayName = 1;
          |  string email = 2;
@@ -165,7 +165,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
     val expectedProtobufs = List(
       s"""
          |syntax = "proto3";
-         |
+         |package org.demo;
          |message DocumentStateChange {
          |  string id = 1;
          |  string documentType = 2;
@@ -242,7 +242,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
     val expectedProtobufs = List(
       s"""
          |syntax = "proto3";
-         |
+         |package org.demo;
          |message DocumentStateChange {
          |  string id = 1;
          |  string documentType = 2;
@@ -287,7 +287,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
     val expectedProtobufs = List(
       s"""
          |syntax = "proto3";
-         |
+         |package org.demo;
          |message UserSignedUp {
          |  optional MyEnum myEnum = 1;
          |  enum MyEnum {
@@ -353,7 +353,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
     val expectedProtobufs = List(
       s"""
          |syntax = "proto3";
-         |
+         |package org.demo;
          |message UserSignedUp {
          |  repeated string strings = 1;
          |  repeated Item stuffs = 2;
@@ -399,7 +399,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
     val expectedProtobufs = List(
       s"""
          |syntax = "proto3";
-         |
+         |package org.demo;
          |message UserSignedUp {
          |  repeated string items = 1;
          |}
@@ -434,7 +434,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
     val expectedProtobufs = List(
       s"""
          |syntax = "proto3";
-         |
+         |package org.demo;
          |message UserSignedUp {
          |  Values values = 1;
          |  enum Values {
@@ -472,7 +472,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
     val expectedProtobufs = List(
       s"""
          |syntax = "proto3";
-         |
+         |package org.demo;
          |message UserSignedUp {
          |  string value = 1;
          |}
@@ -517,7 +517,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
     val expectedProtobufs = List(
       s"""
          |syntax = "proto3";
-         |
+         |package org.demo;
          |message DocumentStateChange {
          |  oneof kind {
          |    string stringEventType = 3;
@@ -533,7 +533,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
   private def checkConversion(input: String, expectedProtobufs: List[String]): IO[Unit] = {
     for {
       asyncApi  <- ParseAsyncApi.parseYamlAsyncApiContent[IO](input)
-      protobufs <- IO.fromTry(protobuf.protobuf.fromAsyncApi(asyncApi))
+      protobufs <- IO.fromTry(protobuf.protobuf.fromAsyncApi(asyncApi, "org.demo"))
     } yield protobufs.zip(expectedProtobufs).foreach { case (protobuf, expected) =>
       assertNoDiff(protobuf.print.normalized, expected.normalized)
     }

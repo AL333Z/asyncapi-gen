@@ -26,7 +26,8 @@ val protobuf = project
   .settings(
     name := "asyncapi-gen-protobuf",
     libraryDependencies ++= List(
-      "org.typelevel" %% "munit-cats-effect-3" % "0.13.1" % Test,
+      "org.typelevel"        %% "munit-cats-effect-3" % "0.13.1" % Test,
+      "com.thesamet.scalapb" %% "scalapbc"            % "0.11.2",
       catsEffects
     )
   )
