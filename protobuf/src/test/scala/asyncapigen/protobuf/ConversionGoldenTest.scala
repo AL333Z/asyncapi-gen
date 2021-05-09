@@ -6,42 +6,44 @@ import asyncapigen.{protobuf, ParseAsyncApi}
 import cats.effect.IO
 import munit.CatsEffectSuite
 
+object Samples {
+  val basicProtobuf: String =
+    s"""
+       |asyncapi: 2.0.0
+       |info:
+       |  title: Account Service
+       |  version: 1.0.0
+       |  description: This service is in charge of processing user signups
+       |channels:
+       |  user/signedup:
+       |    subscribe:
+       |      message:
+       |        name: UserSignedUp
+       |        payload:
+       |          type: object
+       |          required:
+       |            - email
+       |          properties:
+       |            displayName:
+       |              type: string
+       |              description: Name of the user
+       |              x-custom-fields:
+       |                x-protobuf-index:
+       |                  type: integer
+       |                  value: 1
+       |            email:
+       |              type: string
+       |              format: email
+       |              description: Email of the user
+       |              x-custom-fields:
+       |                x-protobuf-index:
+       |                  type: integer
+       |                  value: 2
+       |""".stripMargin
+}
+
 class ConversionGoldenTest extends CatsEffectSuite {
   test("asyncapi to protobuf - basic") {
-    val input: String =
-      s"""
-         |asyncapi: 2.0.0
-         |info:
-         |  title: Account Service
-         |  version: 1.0.0
-         |  description: This service is in charge of processing user signups
-         |channels:
-         |  user/signedup:
-         |    subscribe:
-         |      message:
-         |        name: UserSignedUp
-         |        payload:
-         |          type: object
-         |          required:
-         |            - email
-         |          properties:
-         |            displayName:
-         |              type: string
-         |              description: Name of the user
-         |              x-custom-fields:
-         |                x-protobuf-index:
-         |                  type: integer
-         |                  value: 1
-         |            email:
-         |              type: string
-         |              format: email
-         |              description: Email of the user
-         |              x-custom-fields:
-         |                x-protobuf-index:
-         |                  type: integer
-         |                  value: 2
-         |""".stripMargin
-
     val expectedProtobufs = List(
       s"""
          |syntax = "proto3";
@@ -53,7 +55,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |""".stripMargin
     )
 
-    checkConversion(input, expectedProtobufs)
+    checkConversion(Samples.basicProtobuf, expectedProtobufs)
   }
 
   test("asyncapi to protobuf - basic with refs") {
