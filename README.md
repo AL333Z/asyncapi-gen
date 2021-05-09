@@ -5,15 +5,15 @@ Not much to see here yet.
 Ideally this should:
 - [x] decode an asyncapi spec
 - [ ] be able to generate the schema for the models in:
-    - [x] `protobuf`: currently able to output a .proto file content
+    - [x] `protobuf`: able to output a .proto file content
     - [ ] `json`
     - [ ] `avro` 
 - [ ] be able to generate the scala code for the models (models, serdes)
-    - [ ] `protobuf`: should be doable via `scalapb`
+    - [x] `protobuf`: done via `scalapb`
     - [ ] `json`
     - [ ] `avro`
 
 # Contributing:
 
 No docs provided yet. 
-The best things you can do to see how it works is checking/playing with `ConversionGoldenTest`.
+The best things you can do to see how it works is checking/playing with tests.
