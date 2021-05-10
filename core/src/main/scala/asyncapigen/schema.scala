@@ -73,8 +73,16 @@ object schema {
       payload: Either[Schema, Reference],
       tags: List[String],
       name: Option[String],
-      description: Option[String]
+      description: Option[String],
+      bindings: Option[Message.Bindings]
   )
+
+  object Message {
+    case class Bindings(kafka: Option[Bindings.KafkaBinding])
+    object Bindings {
+      case class KafkaBinding(key: BasicSchema) // TODO support all `Schema`s, not just `BasicSchema`s
+    }
+  }
 
   final case class Tag(name: String, description: Option[String], externalDocs: Option[ExternalDocs])
 
@@ -270,19 +278,34 @@ object schema {
   implicit val eitherSchemaReferenceDecoder: Decoder[Either[Schema, Reference]] =
     Decoder[Schema].either(Decoder[Reference])
 
+  implicit val kafkaMessageBindingsDecoder: Decoder[Message.Bindings.KafkaBinding] =
+    Decoder.forProduct1("key")(Message.Bindings.KafkaBinding)(basicSchemaDecoder)
+
+  implicit val messageBindingsDecoder: Decoder[Message.Bindings] =
+    Decoder.forProduct1("bindings")(Message.Bindings(_))
+
   implicit val messageDecoder: Decoder[Message] =
-    Decoder.forProduct4(
+    Decoder.forProduct5(
       "payload",
       "name",
       "description",
-      "tags"
+      "tags",
+      "bindings"
     )(
       (
           payload: Either[Schema, Reference],
           name: Option[String],
           description: Option[String],
-          tags: Option[List[String]]
-      ) => Message(payload = payload, name = name, description = description, tags = tags.getOrElse(List.empty))
+          tags: Option[List[String]],
+          bindings: Option[Message.Bindings]
+      ) =>
+        Message(
+          payload = payload,
+          name = name,
+          description = description,
+          tags = tags.getOrElse(List.empty),
+          bindings = bindings
+        )
     )
 
   implicit val parameterDecoder: Decoder[Parameter] =

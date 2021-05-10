@@ -56,7 +56,8 @@ class ParseAsyncApiTest extends CatsEffectSuite {
                     ),
                     tags = Nil,
                     name = None,
-                    description = None
+                    description = None,
+                    bindings = None
                   )
                 )
               )
