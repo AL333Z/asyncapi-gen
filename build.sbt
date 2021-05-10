@@ -1,3 +1,5 @@
+import sbt.Keys.resolvers
+
 ThisBuild / scalaVersion := "2.13.4"
 ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / organization := "com.example"
@@ -8,6 +10,7 @@ addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
 val catsEffects     = "org.typelevel" %% "cats-effect"         % "3.1.0"
 val munitCatsEffect = "org.typelevel" %% "munit-cats-effect-3" % "0.13.1" % Test
 val circeV          = "0.13.0"
+val scalapbV        = "0.11.2"
 
 val core = project
   .in(file("core"))
@@ -29,13 +32,25 @@ val protobuf = project
   .settings(
     name := "asyncapi-gen-protobuf",
     libraryDependencies ++= List(
-      catsEffects,
-      "com.thesamet.scalapb" %% "scalapbc" % "0.11.2",
+      "com.thesamet.scalapb" %% "scalapbc" % scalapbV,
       munitCatsEffect
     )
   )
   .dependsOn(core)
 
+val `protobuf-kafka` = project
+  .in(file("protobuf-kafka"))
+  .settings(
+    name := "asyncapi-gen-protobuf-kafka",
+    resolvers += "confluent" at "https://packages.confluent.io/maven/",
+    libraryDependencies ++= List(
+      "io.confluent"          % "kafka-protobuf-serializer" % "6.1.1",
+      "com.thesamet.scalapb" %% "scalapb-runtime"           % scalapbV,
+      munitCatsEffect
+    )
+  )
+  .dependsOn(protobuf)
+
 val `asyncapi-gen` = project
   .in(file("."))
-  .aggregate(core, protobuf)
+  .aggregate(core, protobuf, `protobuf-kafka`)
