@@ -4,7 +4,7 @@ import asyncapigen.kafkaprotobuf.serde.KafkaScalaPBSerde
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import org.apache.kafka.common.serialization.{Serde, Serdes => JSerdes}
 import org.apache.kafka.streams.scala.Serdes
-import org.apache.kafka.streams.scala.kstream.Consumed
+import org.apache.kafka.streams.scala.kstream.{Consumed, Grouped, Produced}
 import scalapb.{GeneratedMessage, GeneratedMessageCompanion, JavaProtoSupport}
 
 import java.util.UUID
@@ -19,108 +19,81 @@ abstract class Topic[KeyScalaPB, ValueScalaPB <: GeneratedMessage](val name: Str
   val valueCompanion: ValueCompanion
   val valueSerde: Serde[ValueScalaPB]
 
-  // TODO add `Consumed`, `Produced`, `Grouped`, etc..
+  // TODO add remaining..
   val consumed: Consumed[KeyScalaPB, ValueScalaPB] = Consumed.`with`(keySerde, valueSerde)
+  val produced: Produced[KeyScalaPB, ValueScalaPB] = Produced.`with`(keySerde, valueSerde)
+  val grouped: Grouped[KeyScalaPB, ValueScalaPB]   = Grouped.`with`(keySerde, valueSerde)
 }
 
-// TODO reduce duplication
 object Topic {
-  def mkIntKeyedTopic[ValueScalaPB <: GeneratedMessage, ValueJavaPBMessage <: com.google.protobuf.Message](
+
+  def mkKeyedTopic[Key, ValueScalaPB <: GeneratedMessage, ValueJavaPBMessage <: com.google.protobuf.Message](
       name: String,
       valueComp: GeneratedMessageCompanion[ValueScalaPB] with JavaProtoSupport[ValueScalaPB, ValueJavaPBMessage],
-      schemaRegistryClient: Option[SchemaRegistryClient] = None
-  ): Topic[Int, ValueScalaPB] = new Topic[Int, ValueScalaPB](name) {
+      schemaRegistryClient: Option[SchemaRegistryClient] = None,
+      kSerde: Serde[Key]
+  ): Topic[Key, ValueScalaPB] = new Topic[Key, ValueScalaPB](name) {
     override type ValueJavaPB = ValueJavaPBMessage
-    override val keySerde: Serde[Int]           = Serdes.Integer
+    override val keySerde: Serde[Key]           = kSerde
     override val valueCompanion: ValueCompanion = valueComp
     override val valueSerde: Serde[ValueScalaPB] = schemaRegistryClient match {
       case Some(src) => KafkaScalaPBSerde.make[ValueScalaPB, ValueJavaPB](valueCompanion, src)
       case None      => KafkaScalaPBSerde.make[ValueScalaPB, ValueJavaPB](valueCompanion)
     }
   }
+
+  def mkIntKeyedTopic[ValueScalaPB <: GeneratedMessage, ValueJavaPBMessage <: com.google.protobuf.Message](
+      name: String,
+      valueCompanion: GeneratedMessageCompanion[ValueScalaPB] with JavaProtoSupport[ValueScalaPB, ValueJavaPBMessage],
+      schemaRegistryClient: Option[SchemaRegistryClient] = None
+  ): Topic[Int, ValueScalaPB] =
+    mkKeyedTopic[Int, ValueScalaPB, ValueJavaPBMessage](name, valueCompanion, schemaRegistryClient, Serdes.Integer)
 
   def mkLongKeyedTopic[ValueScalaPB <: GeneratedMessage, ValueJavaPBMessage <: com.google.protobuf.Message](
       name: String,
-      valueComp: GeneratedMessageCompanion[ValueScalaPB] with JavaProtoSupport[ValueScalaPB, ValueJavaPBMessage],
+      valueCompanion: GeneratedMessageCompanion[ValueScalaPB] with JavaProtoSupport[ValueScalaPB, ValueJavaPBMessage],
       schemaRegistryClient: Option[SchemaRegistryClient] = None
-  ): Topic[Long, ValueScalaPB] = new Topic[Long, ValueScalaPB](name) {
-    override type ValueJavaPB = ValueJavaPBMessage
-    override val keySerde: Serde[Long]          = Serdes.Long
-    override val valueCompanion: ValueCompanion = valueComp
-    override val valueSerde: Serde[ValueScalaPB] = schemaRegistryClient match {
-      case Some(src) => KafkaScalaPBSerde.make[ValueScalaPB, ValueJavaPB](valueCompanion, src)
-      case None      => KafkaScalaPBSerde.make[ValueScalaPB, ValueJavaPB](valueCompanion)
-    }
-  }
+  ): Topic[Long, ValueScalaPB] =
+    mkKeyedTopic[Long, ValueScalaPB, ValueJavaPBMessage](name, valueCompanion, schemaRegistryClient, Serdes.Long)
 
   def mkStringKeyedTopic[ValueScalaPB <: GeneratedMessage, ValueJavaPBMessage <: com.google.protobuf.Message](
       name: String,
-      valueComp: GeneratedMessageCompanion[ValueScalaPB] with JavaProtoSupport[ValueScalaPB, ValueJavaPBMessage],
+      valueCompanion: GeneratedMessageCompanion[ValueScalaPB] with JavaProtoSupport[ValueScalaPB, ValueJavaPBMessage],
       schemaRegistryClient: Option[SchemaRegistryClient] = None
-  ): Topic[String, ValueScalaPB] = new Topic[String, ValueScalaPB](name) {
-    override type ValueJavaPB = ValueJavaPBMessage
-    override val keySerde: Serde[String]        = Serdes.String
-    override val valueCompanion: ValueCompanion = valueComp
-    override val valueSerde: Serde[ValueScalaPB] = schemaRegistryClient match {
-      case Some(src) => KafkaScalaPBSerde.make[ValueScalaPB, ValueJavaPB](valueCompanion, src)
-      case None      => KafkaScalaPBSerde.make[ValueScalaPB, ValueJavaPB](valueCompanion)
-    }
-  }
+  ): Topic[String, ValueScalaPB] =
+    mkKeyedTopic[String, ValueScalaPB, ValueJavaPBMessage](name, valueCompanion, schemaRegistryClient, Serdes.String)
 
   def mkByteArrayKeyedTopic[ValueScalaPB <: GeneratedMessage, ValueJavaPBMessage <: com.google.protobuf.Message](
       name: String,
-      valueComp: GeneratedMessageCompanion[ValueScalaPB] with JavaProtoSupport[ValueScalaPB, ValueJavaPBMessage],
+      valueCompanion: GeneratedMessageCompanion[ValueScalaPB] with JavaProtoSupport[ValueScalaPB, ValueJavaPBMessage],
       schemaRegistryClient: Option[SchemaRegistryClient] = None
-  ): Topic[Array[Byte], ValueScalaPB] = new Topic[Array[Byte], ValueScalaPB](name) {
-    override type ValueJavaPB = ValueJavaPBMessage
-    override val keySerde: Serde[Array[Byte]]   = Serdes.ByteArray
-    override val valueCompanion: ValueCompanion = valueComp
-    override val valueSerde: Serde[ValueScalaPB] = schemaRegistryClient match {
-      case Some(src) => KafkaScalaPBSerde.make[ValueScalaPB, ValueJavaPB](valueCompanion, src)
-      case None      => KafkaScalaPBSerde.make[ValueScalaPB, ValueJavaPB](valueCompanion)
-    }
-  }
+  ): Topic[Array[Byte], ValueScalaPB] =
+    mkKeyedTopic[Array[Byte], ValueScalaPB, ValueJavaPBMessage](
+      name,
+      valueCompanion,
+      schemaRegistryClient,
+      Serdes.ByteArray
+    )
 
   def mkFloatKeyedTopic[ValueScalaPB <: GeneratedMessage, ValueJavaPBMessage <: com.google.protobuf.Message](
       name: String,
-      valueComp: GeneratedMessageCompanion[ValueScalaPB] with JavaProtoSupport[ValueScalaPB, ValueJavaPBMessage],
+      valueCompanion: GeneratedMessageCompanion[ValueScalaPB] with JavaProtoSupport[ValueScalaPB, ValueJavaPBMessage],
       schemaRegistryClient: Option[SchemaRegistryClient] = None
-  ): Topic[Float, ValueScalaPB] = new Topic[Float, ValueScalaPB](name) {
-    override type ValueJavaPB = ValueJavaPBMessage
-    override val keySerde: Serde[Float]         = Serdes.Float
-    override val valueCompanion: ValueCompanion = valueComp
-    override val valueSerde: Serde[ValueScalaPB] = schemaRegistryClient match {
-      case Some(src) => KafkaScalaPBSerde.make[ValueScalaPB, ValueJavaPB](valueCompanion, src)
-      case None      => KafkaScalaPBSerde.make[ValueScalaPB, ValueJavaPB](valueCompanion)
-    }
-  }
+  ): Topic[Float, ValueScalaPB] =
+    mkKeyedTopic[Float, ValueScalaPB, ValueJavaPBMessage](name, valueCompanion, schemaRegistryClient, Serdes.Float)
 
   def mkDoubleKeyedTopic[ValueScalaPB <: GeneratedMessage, ValueJavaPBMessage <: com.google.protobuf.Message](
       name: String,
-      valueComp: GeneratedMessageCompanion[ValueScalaPB] with JavaProtoSupport[ValueScalaPB, ValueJavaPBMessage],
+      valueCompanion: GeneratedMessageCompanion[ValueScalaPB] with JavaProtoSupport[ValueScalaPB, ValueJavaPBMessage],
       schemaRegistryClient: Option[SchemaRegistryClient] = None
-  ): Topic[Double, ValueScalaPB] = new Topic[Double, ValueScalaPB](name) {
-    override type ValueJavaPB = ValueJavaPBMessage
-    override val keySerde: Serde[Double]        = Serdes.Double
-    override val valueCompanion: ValueCompanion = valueComp
-    override val valueSerde: Serde[ValueScalaPB] = schemaRegistryClient match {
-      case Some(src) => KafkaScalaPBSerde.make[ValueScalaPB, ValueJavaPB](valueCompanion, src)
-      case None      => KafkaScalaPBSerde.make[ValueScalaPB, ValueJavaPB](valueCompanion)
-    }
-  }
+  ): Topic[Double, ValueScalaPB] =
+    mkKeyedTopic[Double, ValueScalaPB, ValueJavaPBMessage](name, valueCompanion, schemaRegistryClient, Serdes.Double)
 
   def mkUUIDKeyedTopic[ValueScalaPB <: GeneratedMessage, ValueJavaPBMessage <: com.google.protobuf.Message](
       name: String,
-      valueComp: GeneratedMessageCompanion[ValueScalaPB] with JavaProtoSupport[ValueScalaPB, ValueJavaPBMessage],
+      valueCompanion: GeneratedMessageCompanion[ValueScalaPB] with JavaProtoSupport[ValueScalaPB, ValueJavaPBMessage],
       schemaRegistryClient: Option[SchemaRegistryClient] = None
-  ): Topic[UUID, ValueScalaPB] = new Topic[UUID, ValueScalaPB](name) {
-    override type ValueJavaPB = ValueJavaPBMessage
-    override val keySerde: Serde[UUID]          = JSerdes.UUID()
-    override val valueCompanion: ValueCompanion = valueComp
-    override val valueSerde: Serde[ValueScalaPB] = schemaRegistryClient match {
-      case Some(src) => KafkaScalaPBSerde.make[ValueScalaPB, ValueJavaPB](valueCompanion, src)
-      case None      => KafkaScalaPBSerde.make[ValueScalaPB, ValueJavaPB](valueCompanion)
-    }
-  }
+  ): Topic[UUID, ValueScalaPB] =
+    mkKeyedTopic[UUID, ValueScalaPB, ValueJavaPBMessage](name, valueCompanion, schemaRegistryClient, JSerdes.UUID())
 
 }
