@@ -27,7 +27,13 @@ object schema {
       components: Option[Components],
       tags: List[Tag],
       externalDocs: Option[ExternalDocs]
-  )
+  ) {
+    // TODO this is a strong and wrong assumption. Refs should be fully supported!
+    def resolveMessageFromRef(ref: Reference): (String, Option[Either[Message, Reference]]) = {
+      val messageName = ref.value.split("#/components/messages/")(1)
+      (messageName, components.flatMap(_.messages.get(messageName)))
+    }
+  }
 
   final case class Info(title: String, description: Option[String], version: String)
 

@@ -1,5 +1,6 @@
 package asyncapigen.protobuf
 
+import asyncapigen.ParseAsyncApi
 import cats.effect.IO
 import munit.CatsEffectSuite
 
@@ -13,9 +14,11 @@ class genTest extends CatsEffectSuite {
     val javaTargetFolder  = s"$baseFolder/javapb"
 
     for {
+      asyncApi <- ParseAsyncApi.parseYamlAsyncApiContent[IO](Samples.basicProtobuf)
       _ <- gen.run(
-        input = Samples.basicProtobuf,
-        schemaFolder = schemaFolder,
+        asyncApi = asyncApi,
+        targetPackageName = "org.demo",
+        schemaTargetFolder = schemaFolder,
         scalaTargetFolder = scalaTargetFolder,
         javaTargetFolder = javaTargetFolder
       )

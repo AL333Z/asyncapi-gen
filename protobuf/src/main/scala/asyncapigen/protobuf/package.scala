@@ -89,10 +89,8 @@ package object protobuf {
       ref: Reference,
       isRepeated: Boolean
   ): Try[Option[MessageDescriptorProto]] = {
-    // TODO this is a strong and wrong assumption. Refs should be fully supported!
-    val messageName = ref.value.split("#/components/messages/")(1)
-    val message     = asyncApi.components.flatMap(_.messages.get(messageName))
-    extractMessages(asyncApi, messageName, message, isRepeated)
+    val message = asyncApi.resolveMessageFromRef(ref)
+    extractMessages(asyncApi, message._1, message._2, isRepeated)
   }
 
   private def extractMessageComponents(
