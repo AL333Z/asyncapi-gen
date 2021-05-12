@@ -460,4 +460,15 @@ object schema {
           externalDocs = externalDocs
         )
     )
+
+  implicit class RichString(val inner: String) extends AnyVal {
+    def lowercaseFirstLetter: String =
+      if (inner.isEmpty) "" else s"${Character.toLowerCase(inner.charAt(0))}${inner.substring(1)}"
+
+    def uppercaseFirstLetter: String =
+      if (inner.isEmpty) "" else s"${Character.toUpperCase(inner.charAt(0))}${inner.substring(1)}"
+
+    def toJavaClassCompatible: String =
+      inner.split("[._/\\-]").map(_.uppercaseFirstLetter).mkString
+  }
 }

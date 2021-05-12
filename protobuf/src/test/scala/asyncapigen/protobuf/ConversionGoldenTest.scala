@@ -15,7 +15,7 @@ object Samples {
        |  version: 1.0.0
        |  description: This service is in charge of processing user signups
        |channels:
-       |  user/signedup:
+       |  UserEvents:
        |    subscribe:
        |      message:
        |        name: UserSignedUp

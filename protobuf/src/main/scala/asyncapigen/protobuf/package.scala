@@ -8,7 +8,7 @@ import asyncapigen.protobuf.schema.FieldDescriptorProto.{
 import asyncapigen.protobuf.schema.FieldProtoType._
 import asyncapigen.protobuf.schema._
 import asyncapigen.schema.Schema._
-import asyncapigen.schema.{AsyncApi, Message, Reference, Schema}
+import asyncapigen.schema.{AsyncApi, Message, Reference, RichString, Schema}
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.kernel.Monoid
@@ -47,7 +47,7 @@ package object protobuf {
           .flatTraverse(op => extractMessages(asyncApi, name, op.message, isRepeated = false).map(_.toList))
           .map(messages =>
             FileDescriptorProto(
-              name = uppercaseFirstLetter(name.split('/').last), // TODO not sure what to use
+              name = name.toJavaClassCompatible,
               `package` = Some(`package`),
               messageTypes = messages,
               enumTypes = Nil,
@@ -66,11 +66,11 @@ package object protobuf {
       case Some(Left(message)) =>
         message.payload match {
           case Left(schema) =>
-            val messageName = message.name.getOrElse(name.split('/').last.capitalize) // TODO not sure what to put here
+            val messageName = message.name.getOrElse(name)
             extractMessageComponents(asyncApi, schema, isRepeated).map(components =>
               Some(
                 MessageDescriptorProto(
-                  name = messageName,
+                  name = messageName.toJavaClassCompatible,
                   fields = components.fields,
                   nestedMessages = components.messages,
                   nestedEnums = components.enums,
@@ -187,7 +187,7 @@ package object protobuf {
     case Schema.ArraySchema(schema) =>
       recurseFieldComponents(asyncApi, required, acc, fieldName, schema, customFields, isRepeated = true)
     case Schema.EnumSchema(enum) =>
-      val enumTypeName = uppercaseFirstLetter(fieldName)
+      val enumTypeName = fieldName.uppercaseFirstLetter
       customFields.protoIndex.flatMap(i =>
         Try(NonEmptyList.fromListUnsafe(enum.zipWithIndex))
           .map(enumValues =>
@@ -238,14 +238,14 @@ package object protobuf {
   ): Try[MessageComponents] =
     oneOfs
       .flatTraverse { elem =>
-        val name = lowercaseFirstLetter(elem.name.getOrElse(fieldName))
+        val name = elem.name.getOrElse(fieldName).lowercaseFirstLetter
         elem.customFields.protoIndex.flatMap { i =>
           elem.schema match {
             case Schema.RefSchema(ref) =>
               resolveMessageDescriptorProtoFromRef(asyncApi, ref, isRepeated = false).map(
                 _.toList.map(message =>
                   PlainFieldDescriptorProto(
-                    name = lowercaseFirstLetter(message.name),
+                    name = message.name.lowercaseFirstLetter,
                     `type` = NamedTypeProto(message.name),
                     label = toFieldDescriptorProtoLabel(None, fieldName, isRepeated = false),
                     options = Nil,
@@ -288,12 +288,6 @@ package object protobuf {
           messages = fields.collect { case Left(PlainFieldDescriptorProto(_, _, _, _, _, Some(msgProto))) => msgProto }
         )
       )
-
-  private def lowercaseFirstLetter(str: String): String =
-    if (str.isEmpty) "" else s"${Character.toLowerCase(str.charAt(0))}${str.substring(1)}"
-
-  private def uppercaseFirstLetter(str: String): String =
-    if (str.isEmpty) "" else s"${Character.toUpperCase(str.charAt(0))}${str.substring(1)}"
 
   private def toPlainFieldDescriptorProto(
       required: Option[List[String]],
