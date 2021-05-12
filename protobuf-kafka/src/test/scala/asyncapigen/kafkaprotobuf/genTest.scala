@@ -61,13 +61,13 @@ class genTest extends CatsEffectSuite {
          |
          |  val userEvents: Topic[String, org.demo.UserSignedUp] = 
          |    Topic.mkStringKeyedTopic[org.demo.UserSignedUp, org.demo.UserEvents.UserSignedUp](
-         |      name = "UserEvents",
+         |      name = "user_events",
          |      valueCompanion = org.demo.UserSignedUp
          |    )
          |    
          |  def userEvents(schemaRegistryClient: SchemaRegistryClient): Topic[String, org.demo.UserSignedUp] = 
          |    Topic.mkStringKeyedTopic[org.demo.UserSignedUp, org.demo.UserEvents.UserSignedUp](
-         |      name = "UserEvents",
+         |      name = "user_events",
          |      valueCompanion = org.demo.UserSignedUp,
          |      schemaRegistryClient = Some(schemaRegistryClient)
          |    )

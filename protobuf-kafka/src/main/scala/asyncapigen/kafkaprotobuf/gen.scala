@@ -54,28 +54,29 @@ object gen {
        |
        |object Topics {
        |${topicSpecs
-      .map { case (name, message) => genTopic(name.toJavaClassCompatible, message, targetPackageName) }
+      .map { case (name, message) => genTopic(name, message, targetPackageName) }
       .mkString("\n")}
        |}
        |""".stripMargin
 
-  private def genTopic(name: String, message: Message, targetPackageName: String): String = {
+  private def genTopic(topicName: String, message: Message, targetPackageName: String): String = {
     val keySchema: BasicSchema           = message.bindings.flatMap(_.kafka).map(_.key).getOrElse(BasicSchema.StringSchema)
     val (keyKafkaType, keyKafkaTypeName) = basicSchemaToKafkaType(keySchema)
     val eventName                        = message.name.get.toJavaClassCompatible
+    val name                             = topicName.toJavaClassCompatible
     val scalaValueClass                  = s"$targetPackageName.$eventName"
     val javaValueClass                   = s"$targetPackageName.$name.$eventName"
 
     s"""
        |  val ${name.lowercaseFirstLetter}: Topic[$keyKafkaType, $scalaValueClass] = 
        |    Topic.mk${keyKafkaTypeName}KeyedTopic[$scalaValueClass, $javaValueClass](
-       |      name = "$name",
+       |      name = "$topicName",
        |      valueCompanion = $scalaValueClass
        |    )
        |    
        |  def ${name.lowercaseFirstLetter}(schemaRegistryClient: SchemaRegistryClient): Topic[$keyKafkaType, $scalaValueClass] = 
        |    Topic.mk${keyKafkaTypeName}KeyedTopic[$scalaValueClass, $javaValueClass](
-       |      name = "$name",
+       |      name = "$topicName",
        |      valueCompanion = $scalaValueClass,
        |      schemaRegistryClient = Some(schemaRegistryClient)
        |    )
