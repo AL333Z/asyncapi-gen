@@ -59,17 +59,28 @@ class genTest extends CatsEffectSuite {
          |
          |object Topics {
          |
-         |  val userEvents: Topic[String, org.demo.UserSignedUp] = 
-         |    Topic.mkStringKeyedTopic[org.demo.UserSignedUp, org.demo.UserEvents.UserSignedUp](
-         |      name = "user_events",
-         |      valueCompanion = org.demo.UserSignedUp
-         |    )
-         |    
-         |  def userEvents(schemaRegistryClient: SchemaRegistryClient): Topic[String, org.demo.UserSignedUp] = 
+         |  def userEvents: Topic[String, org.demo.UserSignedUp] = 
          |    Topic.mkStringKeyedTopic[org.demo.UserSignedUp, org.demo.UserEvents.UserSignedUp](
          |      name = "user_events",
          |      valueCompanion = org.demo.UserSignedUp,
-         |      schemaRegistryClient = Some(schemaRegistryClient)
+         |      schemaRegistryClient = None,
+         |      serdeConfig = Map.empty[String, Any]
+         |    )
+         |    
+         |  def userEvents(serdeConfig: Map[String, Any]): Topic[String, org.demo.UserSignedUp] = 
+         |    Topic.mkStringKeyedTopic[org.demo.UserSignedUp, org.demo.UserEvents.UserSignedUp](
+         |      name = "user_events",
+         |      valueCompanion = org.demo.UserSignedUp,
+         |      schemaRegistryClient = None,
+         |      serdeConfig = serdeConfig
+         |    )
+         |    
+         |  def userEvents(schemaRegistryClient: SchemaRegistryClient, serdeConfig: Map[String, Any] = Map()): Topic[String, org.demo.UserSignedUp] = 
+         |    Topic.mkStringKeyedTopic[org.demo.UserSignedUp, org.demo.UserEvents.UserSignedUp](
+         |      name = "user_events",
+         |      valueCompanion = org.demo.UserSignedUp,
+         |      schemaRegistryClient = Some(schemaRegistryClient),
+         |      serdeConfig = serdeConfig
          |    )
          |
          |}
@@ -87,7 +98,7 @@ class genTest extends CatsEffectSuite {
       schemaGenFile      = s"$schemaTargetFolder/UserEvents.proto"
       scalaGenFile       = s"$scalaTargetFolder/org/demo/UserEventsProto.scala"
       javaGenFile        = s"$javaTargetFolder/org/demo/UserEvents.java"
-      scalaTopicsGenFile = s"$scalaTargetFolder/Topics.scala"
+      scalaTopicsGenFile = s"$scalaTargetFolder/org/demo/Topics.scala"
       _ <- assertIOBoolean(IO.delay(new File(schemaGenFile).exists()), s"$schemaGenFile does not exist!")
       _ <- assertIOBoolean(IO.delay(new File(scalaGenFile).exists()), s"$scalaGenFile does not exist!")
       _ <- assertIOBoolean(IO.delay(new File(javaGenFile).exists()), s"$javaGenFile does not exist!")

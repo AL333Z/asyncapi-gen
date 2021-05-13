@@ -68,17 +68,28 @@ object gen {
     val javaValueClass                   = s"$targetPackageName.$name.$eventName"
 
     s"""
-       |  val ${name.lowercaseFirstLetter}: Topic[$keyKafkaType, $scalaValueClass] = 
-       |    Topic.mk${keyKafkaTypeName}KeyedTopic[$scalaValueClass, $javaValueClass](
-       |      name = "$topicName",
-       |      valueCompanion = $scalaValueClass
-       |    )
-       |    
-       |  def ${name.lowercaseFirstLetter}(schemaRegistryClient: SchemaRegistryClient): Topic[$keyKafkaType, $scalaValueClass] = 
+       |  def ${name.lowercaseFirstLetter}: Topic[$keyKafkaType, $scalaValueClass] = 
        |    Topic.mk${keyKafkaTypeName}KeyedTopic[$scalaValueClass, $javaValueClass](
        |      name = "$topicName",
        |      valueCompanion = $scalaValueClass,
-       |      schemaRegistryClient = Some(schemaRegistryClient)
+       |      schemaRegistryClient = None,
+       |      serdeConfig = Map.empty[String, Any]
+       |    )
+       |    
+       |  def ${name.lowercaseFirstLetter}(serdeConfig: Map[String, Any]): Topic[$keyKafkaType, $scalaValueClass] = 
+       |    Topic.mk${keyKafkaTypeName}KeyedTopic[$scalaValueClass, $javaValueClass](
+       |      name = "$topicName",
+       |      valueCompanion = $scalaValueClass,
+       |      schemaRegistryClient = None,
+       |      serdeConfig = serdeConfig
+       |    )
+       |    
+       |  def ${name.lowercaseFirstLetter}(schemaRegistryClient: SchemaRegistryClient, serdeConfig: Map[String, Any] = Map()): Topic[$keyKafkaType, $scalaValueClass] = 
+       |    Topic.mk${keyKafkaTypeName}KeyedTopic[$scalaValueClass, $javaValueClass](
+       |      name = "$topicName",
+       |      valueCompanion = $scalaValueClass,
+       |      schemaRegistryClient = Some(schemaRegistryClient),
+       |      serdeConfig = serdeConfig
        |    )
        |""".stripMargin
   }
