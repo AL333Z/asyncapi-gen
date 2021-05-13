@@ -22,7 +22,7 @@ val core = project
       "io.circe"                %% "circe-parser"     % circeV,
       "io.circe"                %% "circe-yaml"       % "0.13.1",
       "org.typelevel"           %% "log4cats-slf4j"   % "2.1.0",
-      "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.14.1",
+      "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.14.1" % Test,
       munitCatsEffect
     )
   )
