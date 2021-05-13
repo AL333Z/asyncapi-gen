@@ -52,6 +52,14 @@ val `protobuf-kafka` = project
   )
   .dependsOn(protobuf)
 
+val `protobuf-kafka-example` = project
+  .in(file("protobuf-kafka-example"))
+  .settings(
+    name := "asyncapi-gen-protobuf-kafka-example",
+    libraryDependencies ++= List()
+  )
+  .dependsOn(`protobuf-kafka`)
+
 val `asyncapi-gen` = project
   .in(file("."))
-  .aggregate(core, protobuf, `protobuf-kafka`)
+  .aggregate(core, protobuf, `protobuf-kafka`, `protobuf-kafka-example`)
