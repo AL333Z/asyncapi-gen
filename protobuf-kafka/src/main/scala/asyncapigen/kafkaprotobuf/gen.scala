@@ -37,7 +37,7 @@ object gen {
     )
     _ <- logger.info(s"Got topic specs: $topicSpecs")
     content         = getTopics(targetPackageName, topicSpecs)
-    topicTargetFile = s"$scalaTargetFolder/Topics.scala"
+    topicTargetFile = s"$scalaTargetFolder/${targetPackageName.replace('.', '/')}/Topics.scala"
     _ <- logger.info(s"Saving to file $topicTargetFile...")
     _ <- IO.delay(new File(scalaTargetFolder).mkdirs())
     _ <- Resource
