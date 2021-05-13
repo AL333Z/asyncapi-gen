@@ -27,7 +27,7 @@ object Samples {
        |            displayName:
        |              type: string
        |              description: Name of the user
-       |              x-custom-fields:
+       |              x-custom-attributes:
        |                x-protobuf-index:
        |                  type: integer
        |                  value: 1
@@ -35,7 +35,7 @@ object Samples {
        |              type: string
        |              format: email
        |              description: Email of the user
-       |              x-custom-fields:
+       |              x-custom-attributes:
        |                x-protobuf-index:
        |                  type: integer
        |                  value: 2

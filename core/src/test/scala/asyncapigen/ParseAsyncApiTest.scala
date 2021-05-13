@@ -2,8 +2,10 @@ package asyncapigen
 
 import asyncapigen.ParseAsyncApi.YamlSource
 import asyncapigen.schema.Channel.{ItemObject, Operation}
+import asyncapigen.schema.Message.Bindings
+import asyncapigen.schema.Message.Bindings.KafkaBinding
 import asyncapigen.schema.Schema.BasicSchema.StringSchema
-import asyncapigen.schema.Schema.{BasicSchemaValue, CustomFields, ObjectSchema}
+import asyncapigen.schema.Schema.{BasicSchema, BasicSchemaValue, CustomFields, ObjectSchema}
 import asyncapigen.schema.{AsyncApi, Info, Message}
 import cats.effect.IO
 import munit.CatsEffectSuite
@@ -57,7 +59,11 @@ class ParseAsyncApiTest extends CatsEffectSuite {
                     tags = Nil,
                     name = None,
                     description = None,
-                    bindings = None
+                    bindings = Some(
+                      value = Bindings(
+                        kafka = Some(KafkaBinding(BasicSchema.IntegerSchema))
+                      )
+                    )
                   )
                 )
               )

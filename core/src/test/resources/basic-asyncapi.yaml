@@ -7,13 +7,17 @@ channels:
   user/signedup:
     subscribe:
       message:
+        bindings:
+          kafka:
+            key:
+              type: integer
         payload:
           type: object
           properties:
             displayName:
               type: string
               description: Name of the user
-              x-custom-fields:
+              x-custom-attributes:
                 x-protobuf-index:
                   type: integer
                   value: 1
@@ -21,7 +25,7 @@ channels:
               type: string
               format: email
               description: Email of the user
-              x-custom-fields:
+              x-custom-attributes:
                 x-protobuf-index:
                   type: integer
                   value: 2

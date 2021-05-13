@@ -182,7 +182,7 @@ object schema {
       )
     )
     .map(_.getOrElse(Map.empty))
-    .at("x-custom-fields")
+    .at("x-custom-attributes")
     .map(CustomFields.apply)
 
   implicit val sumSchemaElemDecoder: Decoder[SumSchema.Elem] =
@@ -288,7 +288,7 @@ object schema {
     Decoder.forProduct1("key")(Message.Bindings.KafkaBinding)(basicSchemaDecoder)
 
   implicit val messageBindingsDecoder: Decoder[Message.Bindings] =
-    Decoder.forProduct1("bindings")(Message.Bindings(_))
+    Decoder.forProduct1("kafka")(Message.Bindings(_))
 
   implicit val messageDecoder: Decoder[Message] =
     Decoder.forProduct5(

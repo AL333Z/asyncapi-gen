@@ -27,7 +27,7 @@ object Samples {
        |            displayName:
        |              type: string
        |              description: Name of the user
-       |              x-custom-fields:
+       |              x-custom-attributes:
        |                x-protobuf-index:
        |                  type: integer
        |                  value: 1
@@ -35,7 +35,7 @@ object Samples {
        |              type: string
        |              format: email
        |              description: Email of the user
-       |              x-custom-fields:
+       |              x-custom-attributes:
        |                x-protobuf-index:
        |                  type: integer
        |                  value: 2
@@ -82,7 +82,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |          displayName:
          |            type: string
          |            description: Name of the user
-         |            x-custom-fields:
+         |            x-custom-attributes:
          |              x-protobuf-index:
          |                type: integer
          |                value: 1
@@ -90,7 +90,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |            type: string
          |            format: email
          |            description: Email of the user
-         |            x-custom-fields:
+         |            x-custom-attributes:
          |              x-protobuf-index:
          |                type: integer
          |                value: 2
@@ -137,14 +137,14 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |            type: string
          |            format: uuid
          |            description: The message identifier
-         |            x-custom-fields:
+         |            x-custom-attributes:
          |              x-protobuf-index:
          |                type: integer
          |                value: 1
          |          documentType:
          |            type: string
          |            description: Type of the document
-         |            x-custom-fields:
+         |            x-custom-attributes:
          |              x-protobuf-index:
          |                type: integer
          |                value: 2
@@ -152,13 +152,13 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |            oneOf:
          |              - type: string
          |                name: StringEventType
-         |                x-custom-fields:
+         |                x-custom-attributes:
          |                  x-protobuf-index:
          |                    type: integer
          |                    value: 3
          |              - type: integer
          |                name: IntEventType
-         |                x-custom-fields:
+         |                x-custom-attributes:
          |                  x-protobuf-index:
          |                    type: integer
          |                    value: 4
@@ -209,26 +209,26 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |            type: string
          |            format: uuid
          |            description: The message identifier
-         |            x-custom-fields:
+         |            x-custom-attributes:
          |              x-protobuf-index:
          |                type: integer
          |                value: 1
          |          documentType:
          |            type: string
          |            description: Type of the document
-         |            x-custom-fields:
+         |            x-custom-attributes:
          |              x-protobuf-index:
          |                type: integer
          |                value: 2
          |          eventType:
          |            oneOf:
          |              - $$ref: '#/components/messages/DocumentCreatedEvent'
-         |                x-custom-fields:
+         |                x-custom-attributes:
          |                  x-protobuf-index:
          |                    type: integer
          |                    value: 3
          |              - $$ref: '#/components/messages/DocumentSignedEvent'
-         |                x-custom-fields:
+         |                x-custom-attributes:
          |                  x-protobuf-index:
          |                    type: integer
          |                    value: 4
@@ -280,7 +280,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |            myEnum:
          |              type: string
          |              enum: [ bar, foo ]
-         |              x-custom-fields:
+         |              x-custom-attributes:
          |                x-protobuf-index:
          |                  type: integer
          |                  value: 1
@@ -324,7 +324,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |              items:
          |                type: string
          |                format: uuid
-         |              x-custom-fields:
+         |              x-custom-attributes:
          |                x-protobuf-index:
          |                  type: integer
          |                  value: 1
@@ -332,7 +332,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |              type: array
          |              items:
          |                $$ref: '#/components/messages/Item'
-         |              x-custom-fields:
+         |              x-custom-attributes:
          |                x-protobuf-index:
          |                  type: integer
          |                  value: 2
@@ -341,7 +341,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |              items:
          |                type: string
          |                enum: [ bar, foo ]
-         |              x-custom-fields:
+         |              x-custom-attributes:
          |                x-protobuf-index:
          |                  type: integer
          |                  value: 3
@@ -390,7 +390,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |          items:
          |            type: string
          |            format: uuid
-         |          x-custom-fields:
+         |          x-custom-attributes:
          |            x-protobuf-index:
          |              type: integer
          |              value: 1
@@ -427,7 +427,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |        payload:
          |          type: string
          |          enum: [ bar, foo ]
-         |          x-custom-fields:
+         |          x-custom-attributes:
          |            x-protobuf-index:
          |              type: integer
          |              value: 1
@@ -465,7 +465,7 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |        name: UserSignedUp
          |        payload:
          |          type: string
-         |          x-custom-fields:
+         |          x-custom-attributes:
          |            x-protobuf-index:
          |              type: integer
          |              value: 1
@@ -504,13 +504,13 @@ class ConversionGoldenTest extends CatsEffectSuite {
          |        oneOf:
          |          - type: string
          |            name: StringEventType
-         |            x-custom-fields:
+         |            x-custom-attributes:
          |              x-protobuf-index:
          |                type: integer
          |                value: 3
          |          - type: integer
          |            name: IntEventType
-         |            x-custom-fields:
+         |            x-custom-attributes:
          |              x-protobuf-index:
          |                type: integer
          |                value: 4

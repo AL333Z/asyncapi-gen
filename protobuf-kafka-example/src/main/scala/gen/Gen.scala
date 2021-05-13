@@ -17,6 +17,10 @@ object Gen extends IOApp.Simple {
        |    subscribe:
        |      message:
        |        name: User-Signed/Up
+       |        bindings:
+       |          kafka:
+       |            key:
+       |              type: integer
        |        payload:
        |          type: object
        |          required:
@@ -25,7 +29,7 @@ object Gen extends IOApp.Simple {
        |            displayName:
        |              type: string
        |              description: Name of the user
-       |              x-custom-fields:
+       |              x-custom-attributes:
        |                x-protobuf-index:
        |                  type: integer
        |                  value: 1
@@ -33,7 +37,7 @@ object Gen extends IOApp.Simple {
        |              type: string
        |              format: email
        |              description: Email of the user
-       |              x-custom-fields:
+       |              x-custom-attributes:
        |                x-protobuf-index:
        |                  type: integer
        |                  value: 2
