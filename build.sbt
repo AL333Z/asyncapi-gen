@@ -17,22 +17,22 @@ ThisBuild / githubWorkflowJavaVersions := Seq(Java18, Java11)
 ThisBuild / baseVersion := "0.0.1"
 
 //CI definition
-val MicrositesCond = s"matrix.scala == '$Scala213'"
-
-def micrositeWorkflowSteps(cond: Option[String] = None): List[WorkflowStep] = List(
-  WorkflowStep.Use(
-    UseRef.Public("ruby", "setup-ruby", "v1"),
-    params = Map("ruby-version" -> "2.6"),
-    cond = cond
-  ),
-  WorkflowStep.Run(List("gem update --system"), cond = cond),
-  WorkflowStep.Run(List("gem install sass"), cond = cond),
-  WorkflowStep.Run(List("gem install jekyll -v 4"), cond = cond)
-)
+//val MicrositesCond = s"matrix.scala == '$Scala213'"
+//
+//def micrositeWorkflowSteps(cond: Option[String] = None): List[WorkflowStep] = List(
+//  WorkflowStep.Use(
+//    UseRef.Public("ruby", "setup-ruby", "v1"),
+//    params = Map("ruby-version" -> "2.6"),
+//    cond = cond
+//  ),
+//  WorkflowStep.Run(List("gem update --system"), cond = cond),
+//  WorkflowStep.Run(List("gem install sass"), cond = cond),
+//  WorkflowStep.Run(List("gem install jekyll -v 4"), cond = cond)
+//)
 
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("test"), name = Some("Test"))
-) ++ micrositeWorkflowSteps(Some(MicrositesCond))
+) //++ micrositeWorkflowSteps(Some(MicrositesCond))
 //:+ WorkflowStep.Sbt(
 //  List("site/makeMicrosite"),
 //  cond = Some(MicrositesCond)
