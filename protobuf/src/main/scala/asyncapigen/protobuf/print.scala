@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2021 al333z
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 package asyncapigen.protobuf
 
 import asyncapigen.Printer
@@ -59,7 +80,7 @@ object print {
 
   implicit val printEnumFieldDescriptorProto: Printer[EnumFieldDescriptorProto] =
     Printer.print[EnumFieldDescriptorProto] { edp =>
-      s"${edp.label.print} ${edp.enum.name} ${edp.name} = ${edp.index};".stripLeading()
+      s"${edp.label.print} ${edp.enum.name} ${edp.name} = ${edp.index};".stripLeadingSpaces
     }
 
   private val printPlainFieldDescriptorProto: Printer[PlainFieldDescriptorProto] =
@@ -70,8 +91,7 @@ object print {
         else
           options.map(_.print).mkString(start = "[", sep = ", ", end = "]")
 
-      s"${pfdp.label.print} ${pfdp.`type`.print} ${pfdp.name} = ${pfdp.index}${printOptions(pfdp.options)};"
-        .stripLeading()
+      s"${pfdp.label.print} ${pfdp.`type`.print} ${pfdp.name} = ${pfdp.index}${printOptions(pfdp.options)};".stripLeadingSpaces
     }
 
   private val printOneofDescriptorProto: Printer[OneofDescriptorProto] =
@@ -79,15 +99,15 @@ object print {
       val printFields =
         oodp.fields.map {
           case Right(EnumFieldDescriptorProto(name, enum, label, index)) =>
-            s"${label.print} ${enum.name} $name = $index;".stripLeading()
+            s"${label.print} ${enum.name} $name = $index;".stripLeadingSpaces
           case Left(PlainFieldDescriptorProto(name, tpe, label, _, index, _)) =>
-            s"${label.print} ${tpe.print} $name = $index;".stripLeading()
+            s"${label.print} ${tpe.print} $name = $index;".stripLeadingSpaces
         }.leftSpaced
       s"""
          |${oodp.label.print} oneof ${oodp.name} {
          |$printFields
          |}
-      """.stripMargin.stripLeading()
+      """.stripMargin.stripLeadingSpaces
     }
 
   implicit val printFieldDescriptorProto: Printer[FieldDescriptorProto] = Printer.print[FieldDescriptorProto] {
@@ -123,8 +143,8 @@ object print {
   implicit class RichListString(val inner: List[String]) extends AnyVal {
     def leftSpaced: String = inner.map(_.leftSpacedAllLines).mkString("\n")
   }
-
   implicit class RichString(val inner: String) extends AnyVal {
+    def stripLeadingSpaces: String = inner.dropWhile(c => c == ' ' || c == '\t' || Character.isWhitespace(c))
     def leftSpaced: String         = "  " + inner
     def leftSpacedAllLines: String = inner.split('\n').map(_.leftSpaced).mkString("\n")
     def normalized: String =
