@@ -173,6 +173,7 @@ val `protobuf-kafka` = project
 
 val `protobuf-kafka-example` = project
   .in(file("protobuf-kafka-example"))
+  .enablePlugins(NoPublishPlugin)
   .settings(commonSettings, releaseSettings)
   .settings(
     name := "asyncapi-gen-protobuf-kafka-example",
