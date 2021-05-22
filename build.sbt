@@ -185,4 +185,4 @@ val `asyncapi-gen` = project
   .enablePlugins(NoPublishPlugin)
   .aggregate(core, protobuf, `protobuf-kafka`, `protobuf-kafka-example`)
 
-addCommandAlias("buildAll", ";clean;scalafmtAll;+test;mdoc")
+addCommandAlias("buildAll", ";clean;scalafmtAll;+test")
