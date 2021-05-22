@@ -58,6 +58,20 @@ jobs:
       - name: Test
         run: sbt ++${{ matrix.scala }} test
 
+      - if: matrix.scala == '2.13.5'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 2.6
+
+      - if: matrix.scala == '2.13.5'
+        run: gem update --system
+
+      - if: matrix.scala == '2.13.5'
+        run: gem install sass
+
+      - if: matrix.scala == '2.13.5'
+        run: gem install jekyll -v 4
+
       - name: Compress target directories
         run: tar cf targets.tar protobuf-kafka-example/target protobuf-kafka/target protobuf/target target core/target project/target
 
