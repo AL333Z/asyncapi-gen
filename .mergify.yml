@@ -5,4 +5,5 @@ pull_request_rules:
       - status-success=Build Success (ubuntu-latest, 2.13.5, adopt@1.8)
     actions:
       merge:
-        method: merge
+        method: rebase
+        rebase_fallback: none
