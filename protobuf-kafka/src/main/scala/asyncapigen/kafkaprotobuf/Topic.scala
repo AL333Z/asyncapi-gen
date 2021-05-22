@@ -24,9 +24,9 @@ package asyncapigen.kafkaprotobuf
 import asyncapigen.kafkaprotobuf.serde.KafkaScalaPBSerde
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializerConfig
-import org.apache.kafka.common.serialization.{Serde, Serdes => JSerdes}
-import org.apache.kafka.streams.scala.Serdes
+import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.streams.scala.kstream.{Consumed, Grouped, Produced}
+import org.apache.kafka.streams.scala.serialization.Serdes
 import scalapb.{GeneratedMessage, GeneratedMessageCompanion, JavaProtoSupport}
 
 import java.util.UUID
@@ -88,7 +88,7 @@ object Topic {
       name,
       valueCompanion,
       schemaRegistryClient,
-      Serdes.Integer,
+      Serdes.intSerde,
       serdeConfig
     )
 
@@ -102,7 +102,7 @@ object Topic {
       name,
       valueCompanion,
       schemaRegistryClient,
-      Serdes.Long,
+      Serdes.longSerde,
       serdeConfig
     )
 
@@ -116,7 +116,7 @@ object Topic {
       name,
       valueCompanion,
       schemaRegistryClient,
-      Serdes.String,
+      Serdes.stringSerde,
       serdeConfig
     )
 
@@ -130,7 +130,7 @@ object Topic {
       name,
       valueCompanion,
       schemaRegistryClient,
-      Serdes.ByteArray,
+      Serdes.byteArraySerde,
       serdeConfig
     )
 
@@ -144,7 +144,7 @@ object Topic {
       name,
       valueCompanion,
       schemaRegistryClient,
-      Serdes.Float,
+      Serdes.floatSerde,
       serdeConfig
     )
 
@@ -158,7 +158,7 @@ object Topic {
       name,
       valueCompanion,
       schemaRegistryClient,
-      Serdes.Double,
+      Serdes.doubleSerde,
       serdeConfig
     )
 
@@ -172,7 +172,7 @@ object Topic {
       name,
       valueCompanion,
       schemaRegistryClient,
-      JSerdes.UUID(),
+      Serdes.uuidSerde,
       serdeConfig
     )
 

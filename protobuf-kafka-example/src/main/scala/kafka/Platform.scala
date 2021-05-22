@@ -24,6 +24,7 @@ package kafka
 import cats.effect.{Async, Resource, Sync}
 import cats.implicits._
 import org.apache.kafka.streams.KafkaStreams.State
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
 import org.apache.kafka.streams.{KafkaStreams, Topology}
 
 import java.time.Duration
@@ -35,9 +36,12 @@ object Platform {
     Resource.make(Sync[F].delay(new KafkaStreams(top, props)))(s => Sync[F].delay(s.close(timeout)).void)
 
   def runStreams[F[_]: Async](streams: KafkaStreams): F[Unit] = Async[F].async { (k: Either[Throwable, Unit] => Unit) =>
-    streams.setUncaughtExceptionHandler { (_: Thread, e: Throwable) =>
-      k(Left(e))
-    }
+    streams.setUncaughtExceptionHandler(new StreamsUncaughtExceptionHandler {
+      override def handle(e: Throwable): StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse = {
+        k(Left(e))
+        StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_APPLICATION
+      }
+    })
 
     streams.setStateListener { (state: State, _: State) =>
       state match {
