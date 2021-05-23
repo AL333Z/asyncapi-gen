@@ -1,15 +1,17 @@
 An attempt to transform an [asyncapi](https://www.asyncapi.com/docs/specifications/2.0.0) spec to a target schema.
 
 Ideally this should:
-- [x] decode an asyncapi spec
+- [x] parse an asyncapi spec, available in the `"com.al333z" %% "asyncapi-gen-core" % "x.y.z"` dependency
 - [ ] be able to generate the schema for the models in:
-    - [x] `protobuf`: able to output a .proto file content
+    - [x] `protobuf`: able to output a .proto file content, available in the `"com.al333z" %% "asyncapi-gen-protobuf" % "x.y.z"` dependency
     - [ ] `json`
     - [ ] `avro` 
 - [ ] be able to generate the scala code for the models (models, serdes)
-    - [x] `protobuf`: done via `scalapb`
+    - [x] `protobuf`: done via `scalapb`, available in the `"com.al333z" %% "asyncapi-gen-protobuf" % "x.y.z"` dependency
     - [ ] `json`
     - [ ] `avro`
+- [ ] be able to offer a set of utils which will simplify the consumer/producer client code (e.g. serdes, ...) for various broker/formats: 
+    - [x] `kafka/protobuf`, available in the `"com.al333z" %% "asyncapi-gen-kafka" % "x.y.z"` dependency
 
 # Rationale
 
