@@ -41,7 +41,7 @@ object Gen extends IOApp.Simple {
        |        bindings:
        |          kafka:
        |            key:
-       |              type: integer
+       |              type: string
        |        payload:
        |          type: object
        |          required:
