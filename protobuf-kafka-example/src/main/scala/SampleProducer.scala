@@ -22,7 +22,7 @@
 //import asyncapigen.kafkaprotobuf.Topic
 //import cats.effect.{IO, IOApp}
 //import cats.implicits._
-//import gen.{Topics, UserSignedUp}
+//import gen.{Topics, UserEvents}
 //import kafka.Producer
 //import org.typelevel.log4cats.SelfAwareStructuredLogger
 //import org.typelevel.log4cats.slf4j.Slf4jLogger
@@ -32,7 +32,7 @@
 //object SampleProducer extends IOApp.Simple {
 //  implicit val unsafeLogger: SelfAwareStructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 //
-//  val topic: Topic[String, UserSignedUp] = Topics.userEvents(
+//  val topic: Topic[String, UserEvents] = Topics.userEvents(
 //    Map(
 //      "auto.register.schemas" -> "true",
 //      "use.latest.version"    -> "true",
@@ -44,7 +44,7 @@
 //    val props = buildKafkaProps
 //
 //    kafka.Topics.from(props).createIfMissing(Set(topic.name)) >>
-//      Producer.make[String, UserSignedUp](props, topic.keySerde.serializer(), topic.valueSerde.serializer()).use {
+//      Producer.make[String, UserEvents](props, topic.keySerde.serializer(), topic.valueSerde.serializer()).use {
 //        producer =>
 //          messages.traverse_ { msg =>
 //            producer.send(topic.name, msg.email, msg)
@@ -59,10 +59,10 @@
 //    props
 //  }
 //
-//  private def messages: List[UserSignedUp] = {
+//  private def messages: List[UserEvents] = {
 //    for {
 //      i <- (0 until 10).toList
 //      y <- (10 until 20).toList
-//    } yield UserSignedUp(Some(s"al333z$i"), s"email@example.com$y")
+//    } yield UserEvents(Some(s"al333z$i"), s"email@example.com$y")
 //  }
 //}

@@ -37,7 +37,7 @@ object Gen extends IOApp.Simple {
        |  user_events:
        |    subscribe:
        |      message:
-       |        name: User-Signed/Up
+       |        name: UserEvents
        |        bindings:
        |          kafka:
        |            key:

@@ -81,7 +81,7 @@ class genTest extends CatsEffectSuite {
          |object Topics {
          |
          |  def userEvents: Topic[String, org.demo.UserSignedUp] = 
-         |    Topic.mkStringKeyedTopic[org.demo.UserSignedUp, org.demo.UserEvents.UserSignedUp](
+         |    Topic.mkStringKeyedTopic[org.demo.UserSignedUp, org.demo.UserEventsOuterClass.UserSignedUp](
          |      name = "user_events",
          |      valueCompanion = org.demo.UserSignedUp,
          |      schemaRegistryClient = None,
@@ -89,7 +89,7 @@ class genTest extends CatsEffectSuite {
          |    )
          |    
          |  def userEvents(serdeConfig: Map[String, Any]): Topic[String, org.demo.UserSignedUp] = 
-         |    Topic.mkStringKeyedTopic[org.demo.UserSignedUp, org.demo.UserEvents.UserSignedUp](
+         |    Topic.mkStringKeyedTopic[org.demo.UserSignedUp, org.demo.UserEventsOuterClass.UserSignedUp](
          |      name = "user_events",
          |      valueCompanion = org.demo.UserSignedUp,
          |      schemaRegistryClient = None,
@@ -97,7 +97,7 @@ class genTest extends CatsEffectSuite {
          |    )
          |    
          |  def userEvents(schemaRegistryClient: SchemaRegistryClient, serdeConfig: Map[String, Any] = Map()): Topic[String, org.demo.UserSignedUp] = 
-         |    Topic.mkStringKeyedTopic[org.demo.UserSignedUp, org.demo.UserEvents.UserSignedUp](
+         |    Topic.mkStringKeyedTopic[org.demo.UserSignedUp, org.demo.UserEventsOuterClass.UserSignedUp](
          |      name = "user_events",
          |      valueCompanion = org.demo.UserSignedUp,
          |      schemaRegistryClient = Some(schemaRegistryClient),

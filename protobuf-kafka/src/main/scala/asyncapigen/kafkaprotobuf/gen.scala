@@ -86,7 +86,7 @@ object gen {
     val eventName                        = message.name.get.toJavaClassCompatible
     val name                             = topicName.toJavaClassCompatible
     val scalaValueClass                  = s"$targetPackageName.$eventName"
-    val javaValueClass                   = s"$targetPackageName.$name.$eventName"
+    val javaValueClass                   = s"$targetPackageName.${name}OuterClass.$eventName"
 
     s"""
        |  def ${name.lowercaseFirstLetter}: Topic[$keyKafkaType, $scalaValueClass] = 

@@ -22,7 +22,7 @@
 //import asyncapigen.kafkaprotobuf.Topic
 //import cats.effect.{IO, IOApp, Resource, Sync}
 //import cats.implicits._
-//import gen.{Topics, UserSignedUp}
+//import gen.{Topics, UserEvents}
 //import kafka.Platform
 //import org.apache.kafka.streams.kstream.KStream
 //import org.apache.kafka.streams.{KafkaStreams, StreamsBuilder, Topology}
@@ -35,7 +35,7 @@
 //object SampleConsumer extends IOApp.Simple {
 //  implicit val logger: SelfAwareStructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 //
-//  val topic: Topic[String, UserSignedUp] = Topics.userEvents(
+//  val topic: Topic[String, UserEvents] = Topics.userEvents(
 //    Map(
 //      "auto.register.schemas" -> "true",
 //      "use.latest.version"    -> "true",
@@ -47,8 +47,8 @@
 //    val props              = buildKafkaProps
 //    val sb: StreamsBuilder = new StreamsBuilder
 //
-//    val input: KStream[String, UserSignedUp] = sb.stream(topic.name, topic.consumed)
-//    input.foreach((key: String, value: UserSignedUp) => logger.info(s"Got $key -> $value").unsafeRunSync()(runtime))
+//    val input: KStream[String, UserEvents] = sb.stream(topic.name, topic.consumed)
+//    input.foreach((key: String, value: UserEvents) => logger.info(s"Got $key -> $value").unsafeRunSync()(runtime))
 //    val topology = sb.build(props)
 //
 //    kafka.Topics.from(props).createIfMissing(Set(topic.name)) >>
