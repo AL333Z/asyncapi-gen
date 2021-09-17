@@ -8,7 +8,7 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 
 ThisBuild / mimaFailOnProblem := false
 ThisBuild / mimaFailOnNoPrevious := false
-ThisBuild / scalaVersion := "2.13.5"
+ThisBuild / scalaVersion := "2.13.6"
 ThisBuild / organization := "com.al333z"
 ThisBuild / organizationName := "al333z"
 ThisBuild / publishFullName := "Alessandro Zoffoli"
