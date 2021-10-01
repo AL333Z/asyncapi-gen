@@ -101,7 +101,7 @@ ThisBuild / githubWorkflowPublish := Seq(
 //)
 
 val catsEffects     = "org.typelevel" %% "cats-effect"         % "3.2.9"
-val munitCatsEffect = "org.typelevel" %% "munit-cats-effect-3" % "1.0.5" % Test
+val munitCatsEffect = "org.typelevel" %% "munit-cats-effect-3" % "1.0.6" % Test
 val circeV          = "0.14.1"
 val scalapbV        = "0.11.5"
 
