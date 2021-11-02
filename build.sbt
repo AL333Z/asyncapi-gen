@@ -1,6 +1,6 @@
 val Java18   = "adopt@1.8"
 val Java11   = "adopt@1.11"
-val Scala213 = "2.13.6"
+val Scala213 = "2.13.7"
 
 import sbt.Keys.resolvers
 enablePlugins(SonatypeCiReleasePlugin)
@@ -8,7 +8,7 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 
 ThisBuild / mimaFailOnProblem := false
 ThisBuild / mimaFailOnNoPrevious := false
-ThisBuild / scalaVersion := "2.13.6"
+ThisBuild / scalaVersion := "2.13.7"
 ThisBuild / organization := "com.al333z"
 ThisBuild / organizationName := "al333z"
 ThisBuild / publishFullName := "Alessandro Zoffoli"
