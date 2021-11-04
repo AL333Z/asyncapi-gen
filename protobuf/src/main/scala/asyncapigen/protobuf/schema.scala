@@ -50,7 +50,7 @@ object schema {
   object FieldDescriptorProto {
     final case class EnumFieldDescriptorProto(
         name: String,
-        enum: EnumDescriptorProto,
+        enumeration: EnumDescriptorProto,
         label: FieldDescriptorProtoLabel,
         index: Int
     ) extends FieldDescriptorProto {

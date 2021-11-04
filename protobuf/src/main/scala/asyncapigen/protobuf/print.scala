@@ -80,7 +80,7 @@ object print {
 
   implicit val printEnumFieldDescriptorProto: Printer[EnumFieldDescriptorProto] =
     Printer.print[EnumFieldDescriptorProto] { edp =>
-      s"${edp.label.print} ${edp.enum.name} ${edp.name} = ${edp.index};".stripLeadingSpaces
+      s"${edp.label.print} ${edp.enumeration.name} ${edp.name} = ${edp.index};".stripLeadingSpaces
     }
 
   private val printPlainFieldDescriptorProto: Printer[PlainFieldDescriptorProto] =
@@ -98,8 +98,8 @@ object print {
     Printer.print[OneofDescriptorProto] { oodp =>
       val printFields =
         oodp.fields.map {
-          case Right(EnumFieldDescriptorProto(name, enum, label, index)) =>
-            s"${label.print} ${enum.name} $name = $index;".stripLeadingSpaces
+          case Right(EnumFieldDescriptorProto(name, enumeration, label, index)) =>
+            s"${label.print} ${enumeration.name} $name = $index;".stripLeadingSpaces
           case Left(PlainFieldDescriptorProto(name, tpe, label, _, index, _)) =>
             s"${label.print} ${tpe.print} $name = $index;".stripLeadingSpaces
         }.leftSpaced
