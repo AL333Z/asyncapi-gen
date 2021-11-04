@@ -67,7 +67,7 @@ object schema {
   )
 
   object Server {
-    final case class Variable(enum: List[String], default: String, description: Option[String])
+    final case class Variable(`enum`: List[String], default: String, description: Option[String])
   }
 
   final case class Reference(value: String)
@@ -125,7 +125,7 @@ object schema {
     final case class RefSchema(ref: Reference)                                                        extends Schema
     final case class ObjectSchema(required: List[String], properties: Map[String, ObjectSchema.Elem]) extends Schema
     final case class ArraySchema(items: Schema)                                                       extends Schema
-    final case class EnumSchema(enum: List[String])                                                   extends Schema
+    final case class EnumSchema(`enum`: List[String])                                                 extends Schema
     final case class SumSchema(oneOf: List[SumSchema.Elem])                                           extends Schema
 
     final case class CustomFields(inner: Map[String, BasicSchemaValue]) extends AnyVal
@@ -421,8 +421,8 @@ object schema {
       "enum",
       "default",
       "description"
-    )((enum: Option[List[String]], default: String, description: Option[String]) =>
-      Server.Variable(enum.getOrElse(List.empty), default, description)
+    )((enumeration: Option[List[String]], default: String, description: Option[String]) =>
+      Server.Variable(enumeration.getOrElse(List.empty), default, description)
     )
 
   implicit val serverDecoder: Decoder[Server] =

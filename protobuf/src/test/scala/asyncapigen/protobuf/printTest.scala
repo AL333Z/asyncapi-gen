@@ -144,7 +144,7 @@ class printTest extends FunSuite {
             ),
             EnumFieldDescriptorProto(
               name = "corpus",
-              enum = enumDescriptorProto,
+              enumeration = enumDescriptorProto,
               label = FieldDescriptorProtoLabel.Required,
               index = 4
             )
@@ -224,7 +224,7 @@ class printTest extends FunSuite {
             ),
             EnumFieldDescriptorProto(
               name = "corpus",
-              enum = enumDescriptorProto,
+              enumeration = enumDescriptorProto,
               label = FieldDescriptorProtoLabel.Required,
               index = 4
             ),
@@ -241,7 +241,7 @@ class printTest extends FunSuite {
                 ).asLeft,
                 EnumFieldDescriptorProto(
                   name = "foo",
-                  enum = enumDescriptorProto,
+                  enumeration = enumDescriptorProto,
                   label = FieldDescriptorProtoLabel.Required,
                   index = 6
                 ).asRight

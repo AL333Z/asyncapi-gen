@@ -152,13 +152,13 @@ package object protobuf {
           customFields = CustomFields.withDefaultProtobufIndex,
           isRepeated = false
         )
-      case enum: Schema.EnumSchema =>
+      case enumeration: Schema.EnumSchema =>
         recurseFieldComponents(
           asyncApi = asyncApi,
           required = None,
           acc = Monoid[MessageComponents].empty,
           fieldName = "values",
-          schema = enum,
+          schema = enumeration,
           customFields = CustomFields.withDefaultProtobufIndex,
           isRepeated = false
         )
@@ -207,10 +207,10 @@ package object protobuf {
       extractFromObjectSchema(asyncApi, required, properties, isRepeated).map(acc.combine)
     case Schema.ArraySchema(schema) =>
       recurseFieldComponents(asyncApi, required, acc, fieldName, schema, customFields, isRepeated = true)
-    case Schema.EnumSchema(enum) =>
+    case Schema.EnumSchema(enumeration) =>
       val enumTypeName = fieldName.uppercaseFirstLetter
       customFields.protoIndex.flatMap(i =>
-        Try(NonEmptyList.fromListUnsafe(enum.zipWithIndex))
+        Try(NonEmptyList.fromListUnsafe(enumeration.zipWithIndex))
           .map(enumValues =>
             acc
               .appendField(
@@ -275,13 +275,13 @@ package object protobuf {
                   ).asLeft
                 )
               )
-            case Schema.EnumSchema(enum) =>
-              Try(NonEmptyList.fromListUnsafe(enum))
+            case Schema.EnumSchema(enumeration) =>
+              Try(NonEmptyList.fromListUnsafe(enumeration))
                 .map(enumValues =>
                   List(
                     EnumFieldDescriptorProto(
                       name = name,
-                      enum = EnumDescriptorProto(
+                      enumeration = EnumDescriptorProto(
                         name = fieldName,
                         symbols = enumValues.zipWithIndex
                       ),
@@ -305,7 +305,7 @@ package object protobuf {
               fields = fields
             )
           ),
-          enums = fields.collect { case Right(e) => e.enum },
+          enums = fields.collect { case Right(e) => e.enumeration },
           messages = fields.collect { case Left(PlainFieldDescriptorProto(_, _, _, _, _, Some(msgProto))) => msgProto }
         )
       )
