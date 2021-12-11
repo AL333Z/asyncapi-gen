@@ -164,7 +164,7 @@ val `protobuf-kafka` = project
     resolvers += "confluent" at "https://packages.confluent.io/maven/",
     libraryDependencies ++= List(
       "io.confluent"          % "kafka-protobuf-serializer" % "7.0.0",
-      "org.apache.kafka"     %% "kafka-streams-scala"       % "7.0.0-ce",
+      "org.apache.kafka"     %% "kafka-streams-scala"       % "7.0.1-ce",
       "com.thesamet.scalapb" %% "scalapb-runtime"           % scalapbV,
       munitCatsEffect
     )
