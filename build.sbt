@@ -163,7 +163,7 @@ val `protobuf-kafka` = project
     name := "asyncapi-gen-protobuf-kafka",
     resolvers += "confluent" at "https://packages.confluent.io/maven/",
     libraryDependencies ++= List(
-      "io.confluent"          % "kafka-protobuf-serializer" % "7.0.1",
+      "io.confluent"          % "kafka-protobuf-serializer" % "7.0.6",
       "org.apache.kafka"     %% "kafka-streams-scala"       % "7.0.0-ce",
       "com.thesamet.scalapb" %% "scalapb-runtime"           % scalapbV,
       munitCatsEffect
