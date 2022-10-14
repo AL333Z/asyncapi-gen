@@ -26,7 +26,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.8]
+        scala: [2.13.10]
         java: [adopt@1.8, adopt@1.11]
     runs-on: ${{ matrix.os }}
     steps:
@@ -58,18 +58,18 @@ jobs:
       - name: Test
         run: sbt ++${{ matrix.scala }} test
 
-      - if: matrix.scala == '2.13.8'
+      - if: matrix.scala == '2.13.10'
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: 2.6
 
-      - if: matrix.scala == '2.13.8'
+      - if: matrix.scala == '2.13.10'
         run: gem update --system
 
-      - if: matrix.scala == '2.13.8'
+      - if: matrix.scala == '2.13.10'
         run: gem install sass
 
-      - if: matrix.scala == '2.13.8'
+      - if: matrix.scala == '2.13.10'
         run: gem install jekyll -v 4
 
       - name: Compress target directories
@@ -88,7 +88,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.8]
+        scala: [2.13.10]
         java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
@@ -134,7 +134,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.8]
+        scala: [2.13.10]
         java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
@@ -169,7 +169,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.8]
+        scala: [2.13.10]
         java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
