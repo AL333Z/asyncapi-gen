@@ -103,7 +103,7 @@ ThisBuild / githubWorkflowPublish := Seq(
 val catsEffects     = "org.typelevel" %% "cats-effect"         % "3.3.4"
 val munitCatsEffect = "org.typelevel" %% "munit-cats-effect-3" % "1.0.7" % Test
 val circeV          = "0.14.1"
-val scalapbV        = "0.11.8"
+val scalapbV        = "0.11.12"
 
 val commonSettings = Seq(
   scalafmtOnCompile := true,
